@@ -1,0 +1,250 @@
+@import 'tailwindcss';
+
+/*
+ * Dois sistemas visuais completos, não um "claro/escuro" do mesmo design.
+ * Todo componente lê APENAS estas variáveis — nenhum hex solto em JSX.
+ *
+ * Cyber Purple & Neon Energy: indigo/violeta é a cor de marca (o "quem somos"),
+ * lima/menta são as cores de ação (o "clique aqui" — alto contraste de propósito,
+ * pra CTA nunca se confundir com decoração). Coral e âmbar são pontuação, não
+ * protagonistas — aparecem em alertas e badges secundários, nunca em botão primário.
+ */
+
+/* ── Tema 1: Fresh Chalk (light) ─────────────────────────────────────────── */
+:root,
+[data-theme='brutalist'] {
+  --surface: #fafafa;
+  --surface-raised: #ffffff;
+  --ink: #0b0f17;
+  --ink-muted: #6b7280;
+  --accent: #10b981;
+  --accent-ink: #ffffff;
+  --lime: #84c916;
+  --signal: #ff6b6b;
+  --violet: #6366f1;
+  --amber: #f59e0b;
+  --line: #e5e7eb;
+
+  --border-width: 1px;
+  --radius: 20px;
+  --radius-pill: 999px;
+  --shadow-hard: 0 14px 32px rgb(11 15 23 / 0.08);
+  --shadow-hard-sm: 0 8px 18px rgb(11 15 23 / 0.06);
+  --shadow-glow: 0 14px 32px rgb(16 185 129 / 0.3);
+
+  /*
+   * Fundo ambiente. Sobre superfície clara o desfoque lava a cor, então o claro
+   * precisa de orbe bem mais opaco que o escuro para render a mesma presença.
+   * A linha do grid é tinta escura aqui — `--line` sumiria sobre #fafafa.
+   */
+  --backdrop-orb-opacity: 0.85;
+  --backdrop-grid-color: rgb(11 15 23 / 0.07);
+
+  /*
+   * Véu sobre o vídeo do hero. O vídeo é claro, então aqui basta um toque para
+   * o texto escuro descolar — no tema escuro é o oposto e precisa bem mais.
+   */
+  --hero-scrim-top: 42%;
+  --hero-scrim-mid: 14%;
+  --hero-scrim-bottom: 72%;
+}
+
+/* ── Tema 2: Deep Velvet Obsidian (dark) ─────────────────────────────────── */
+[data-theme='midnight'] {
+  --surface: #0b0f17;
+  --surface-raised: #141826;
+  --ink: #f5f5fa;
+  --ink-muted: #8b8fa3;
+  --accent: #a3e635;
+  --accent-ink: #0b0f17;
+  --lime: #a3e635;
+  --signal: #ff6b6b;
+  --violet: #8b5cf6;
+  --amber: #f59e0b;
+  --line: #1e2130;
+
+  --border-width: 1px;
+  --radius: 20px;
+  --radius-pill: 999px;
+  /* Aqui a profundidade vem de brilho difuso sobre o obsidian, não de sombra neutra. */
+  --shadow-hard: 0 16px 44px rgb(99 102 241 / 0.28);
+  --shadow-hard-sm: 0 10px 24px rgb(99 102 241 / 0.2);
+  --shadow-glow: 0 0 36px rgb(163 230 53 / 0.45);
+
+  /* No obsidian o orbe já brilha sozinho — passar disso vira névoa. */
+  --backdrop-orb-opacity: 0.5;
+  --backdrop-grid-color: rgb(245 245 250 / 0.05);
+
+  /* Texto claro sobre vídeo claro não se lê: aqui o véu escurece de verdade. */
+  --hero-scrim-top: 52%;
+  --hero-scrim-mid: 26%;
+  --hero-scrim-bottom: 88%;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-signal: var(--signal);
+  --color-violet: var(--violet);
+  --color-lime: var(--lime);
+  --color-amber: var(--amber);
+  --color-line: var(--line);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-jakarta);
+}
+
+html {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition:
+    background-color 320ms ease,
+    color 320ms ease;
+}
+
+/*
+ * `body` fica transparente de propósito.
+ *
+ * O fundo do html propaga pro canvas; o do body pintaria como bloco in-flow —
+ * e, na ordem de pintura do CSS, isso vem DEPOIS dos descendentes com z-index
+ * negativo. Um body opaco esconde o AmbientBackdrop inteiro.
+ */
+body {
+  background: transparent;
+  color: var(--ink);
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+/* Foco sempre visível — em ambos os temas, sem exceção por componente. */
+:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Ticker infinito — pausa no hover/foco para quem quiser ler parado. */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee-scroll 28s linear infinite;
+}
+
+.marquee-track:hover,
+.marquee-track:focus-within {
+  animation-play-state: paused;
+}
+
+/* ── Camadas de fundo ─────────────────────────────────────────────────────
+ * Profundidade vem de três planos empilhados: grid técnico (estrutura),
+ * orbes desfocados (volume/cor) e formas flutuantes (vida). Todos decorativos —
+ * ficam atrás do conteúdo, com aria-hidden, e nunca capturam ponteiro.
+ */
+
+.backdrop-grid {
+  background-image:
+    linear-gradient(to right, var(--backdrop-grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--backdrop-grid-color) 1px, transparent 1px);
+  background-size: 64px 64px;
+  /* Some nas bordas pra grid não "cortar" na viewport. */
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 100%);
+}
+
+/* Intensidade dos orbes por tema, num só lugar em vez de por orbe. */
+.backdrop-orbs {
+  position: absolute;
+  inset: 0;
+  opacity: var(--backdrop-orb-opacity);
+}
+
+.backdrop-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(120px);
+  will-change: transform;
+}
+
+@keyframes orb-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, -6%, 0) scale(1.12);
+  }
+}
+
+@keyframes shape-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(8deg);
+  }
+}
+
+.animate-orb-drift {
+  animation: orb-drift 18s ease-in-out infinite;
+}
+
+.animate-shape-float {
+  animation: shape-float 7s ease-in-out infinite;
+}
+
+/* ── Rolodex de scroll ────────────────────────────────────────────────────
+ * O painel tem altura fixa e corta o excesso; o track desliza por dentro, uma
+ * linha por palavra. Cada linha mede exatamente a altura do painel, então
+ * deslocar o track em -1 painel troca exatamente uma palavra.
+ */
+.rolodex-panel {
+  height: var(--rolodex-panel-h);
+  overflow: hidden;
+  /* Esfuma topo e base pra palavra entrar e sair sem borda dura. A faixa é
+     curta de propósito: acento de maiúscula (Ê, Ç) fica perto do limite da
+     caixa e some se o esfumado avançar demais. */
+  mask-image: linear-gradient(to bottom, transparent, #000 11%, #000 89%, transparent);
+}
+
+.rolodex-row {
+  height: var(--rolodex-panel-h);
+  display: flex;
+  align-items: center;
+}
+
+/* Palavra mascarada pro reveal de scroll — ver useGsapWordReveal. */
+.word-reveal-mask {
+  display: inline-block;
+  overflow: hidden;
+}
+
+.word-reveal-word {
+  display: inline-block;
+  will-change: transform, opacity;
+}
