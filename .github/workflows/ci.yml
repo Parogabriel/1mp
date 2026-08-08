@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Só leitura. O workflow não publica release, não comenta em PR e não escreve
+# no repositório — dar mais que isso é ampliar a superfície de ataque de
+# qualquer ação de terceiro que entre aqui depois.
+permissions:
+  contents: read
+
+# Um push novo na mesma branch cancela a execução anterior, que já está
+# obsoleta.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Lint, tipos e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # Valor de fachada só para satisfazer a validação de src/env.ts durante o
+      # build. Não é segredo e não deve virar um: se um dia o CI precisar de
+      # credencial de verdade, ela entra por secrets do repositório.
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # O token do checkout não fica gravado no .git/config do runner.
+          persist-credentials: false
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # O hook de pre-commit pode ser contornado com --no-verify; este passo,
+      # não. É o mesmo bloqueio um nível acima, onde ninguém tem a opção de
+      # desligar.
+      - name: Guarda de segredos
+        run: |
+          ambiente=$(git ls-files | grep -E '(^|/)\.env' | grep -vE '(^|/)\.env\.example$' || true)
+          chaves=$(git ls-files | grep -iE '\.(pem|key|p12|pfx|jks|keystore)$' || true)
+          if [ -n "$ambiente$chaves" ]; then
+            echo "::error::Arquivo sensível rastreado pelo repositório:"
+            printf '%s\n' "$ambiente" "$chaves"
+            exit 1
+          fi
+          echo "Nenhum arquivo de ambiente ou chave rastreado."
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Checagem de tipos
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
