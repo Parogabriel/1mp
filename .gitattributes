@@ -1,0 +1,26 @@
+# Normaliza a quebra de linha na entrada do repositório.
+#
+# O desenvolvimento acontece no Windows (CRLF) e o CI roda em Linux (LF). Sem
+# esta normalização, o primeiro checkout no runner marca todos os arquivos como
+# modificados e qualquer diff vira ruído.
+* text=auto eol=lf
+
+# Os hooks são executados pelo bash do Git for Windows. Um único CR no shebang
+# faz o interpretador falhar com "bad interpreter: /bin/sh^M", então estes
+# arquivos precisam de LF mesmo que a configuração local diga o contrário.
+.husky/* text eol=lf
+*.sh text eol=lf
+
+# Binários: nunca normalizar, nunca tentar diff textual.
+*.webp binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+
+# O lockfile é gerado; colapsa no diff da pull request sem esconder o arquivo.
+package-lock.json linguist-generated=true diff=json

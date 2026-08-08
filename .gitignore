@@ -1,0 +1,69 @@
+# Dependências
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/versions
+
+# Build e cache
+/.next
+/out
+/build
+/dist
+*.tsbuildinfo
+next-env.d.ts
+
+# Variáveis de ambiente
+#
+# `.env*` cobre .env, .env.local, .env.production e qualquer variante futura.
+# A exceção abaixo é a única forma de um arquivo de env entrar no repositório —
+# e .env.example, por contrato, nunca carrega valor real.
+.env*
+!.env.example
+
+# Chaves e certificados
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+
+# Credenciais de provedores
+.vercel
+.netlify
+.firebase
+gha-creds-*.json
+*-service-account*.json
+
+# Configuração local do editor
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# Cobertura e testes
+/coverage
+/.nyc_output
+/playwright-report
+/test-results
+/blob-report
+/playwright/.cache
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
