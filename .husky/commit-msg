@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Valida a mensagem contra o Conventional Commits e o scope-enum do projeto.
+# As regras vivem em commitlint.config.js.
+npx --no -- commitlint --edit "$1"

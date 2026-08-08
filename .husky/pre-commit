@@ -1,0 +1,74 @@
+#!/usr/bin/env sh
+
+# Última barreira antes de um segredo entrar no histórico.
+#
+# Depois do commit, tirar um segredo de lá significa reescrever o histórico; se
+# já houve push, significa rotacionar a credencial. O custo de um falso positivo
+# aqui é dez segundos — o de um falso negativo é uma chave vazada. Por isso o
+# hook falha fechado.
+#
+# Se algo aqui for falso positivo, corrija o padrão neste arquivo. Não use
+# --no-verify: hook contornado é hook que não existe.
+#
+# NOTA SOBRE `|| true`: o husky executa este arquivo com `sh -e`, que aborta ao
+# primeiro comando com saída diferente de zero. E `grep` sai com 1 justamente
+# quando não encontra nada — o caso normal de um commit limpo. Sem o `|| true`
+# em cada busca, o hook reprovaria todo commit sem nenhum problema real.
+
+arquivos=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if [ -z "$arquivos" ]; then
+  exit 0
+fi
+
+bloqueado=0
+
+# 1. Arquivos de ambiente. .env.example é a única exceção, por contrato.
+envs=$(printf '%s\n' "$arquivos" | grep -E '(^|/)\.env' | grep -vE '(^|/)\.env\.example$' || true)
+if [ -n "$envs" ]; then
+  echo "BLOQUEADO: arquivo de ambiente em stage."
+  printf '%s\n' "$envs" | sed 's/^/    /'
+  echo "    Só .env.example pode ser versionado."
+  echo "    Para remover do stage: git restore --staged <arquivo>"
+  echo
+  bloqueado=1
+fi
+
+# 2. Chaves privadas e certificados.
+chaves=$(printf '%s\n' "$arquivos" | grep -iE '\.(pem|key|p12|pfx|jks|keystore|crt|cer)$' || true)
+if [ -n "$chaves" ]; then
+  echo "BLOQUEADO: chave privada ou certificado em stage."
+  printf '%s\n' "$chaves" | sed 's/^/    /'
+  echo
+  bloqueado=1
+fi
+
+# 3. Segredos no conteúdo adicionado.
+#
+# Só as linhas novas (+) são inspecionadas: se o padrão já estava no arquivo, o
+# commit atual não é o momento de descobrir isso, e travar aqui só ensinaria a
+# usar --no-verify.
+padrao='sk_(live|test)_[A-Za-z0-9]{16,}'
+padrao="$padrao"'|rk_live_[A-Za-z0-9]{16,}'
+padrao="$padrao"'|whsec_[A-Za-z0-9]{16,}'
+padrao="$padrao"'|pk_live_[A-Za-z0-9]{16,}'
+padrao="$padrao"'|AKIA[0-9A-Z]{16}'
+padrao="$padrao"'|ghp_[A-Za-z0-9]{30,}'
+padrao="$padrao"'|github_pat_[A-Za-z0-9_]{30,}'
+padrao="$padrao"'|xox[baprs]-[A-Za-z0-9-]{10,}'
+padrao="$padrao"'|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+
+achados=$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -vE '^\+\+\+' | grep -E "$padrao" || true)
+if [ -n "$achados" ]; then
+  echo "BLOQUEADO: o conteúdo em stage parece conter um segredo."
+  printf '%s\n' "$achados" | cut -c1-110 | sed 's/^/    /'
+  echo
+  bloqueado=1
+fi
+
+if [ "$bloqueado" -ne 0 ]; then
+  echo "Nada foi commitado."
+  exit 1
+fi
+
+exit 0
