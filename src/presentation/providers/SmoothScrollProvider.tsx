@@ -81,11 +81,14 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
      * mas medido no navegador ele nunca disparou nem uma vez em três segundos —
      * nem a chamada inicial que a spec garante. Sem confiar nisso em todo
      * navegador, a correção que não depende de nenhum callback de observador é
-     * chamar `resize()` a cada frame do próprio laço que já roda:
-     * a leitura é barata (scrollHeight, clientHeight), o laço já existe e roda
-     * enquanto a página é rolável, e a altura correta nunca fica mais de um frame
-     * desatualizada, não importa a fonte do crescimento.
+     * checar a altura a cada frame do próprio laço que já roda.
+     *
+     * `lenis.resize()` sozinho recomputa várias medidas e não é barato o
+     * suficiente pra rodar 60x por segundo pra sempre — chamado assim, incondicional,
+     * ele foi o que deixou o scroll inteiro pesado. `scrollHeight` sim é barato: é a
+     * guarda, e só quando ela muda é que o recálculo caro roda.
      */
+    let alturaConhecida = 0;
     const update = (time: number) => {
       const lenis = lenisRef.current?.lenis;
       if (!lenis) return;
@@ -96,7 +99,12 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
         assinado = lenis;
       }
 
-      lenis.resize();
+      const altura = document.documentElement.scrollHeight;
+      if (altura !== alturaConhecida) {
+        alturaConhecida = altura;
+        lenis.resize();
+      }
+
       lenis.raf(time * 1000);
     };
 
@@ -117,13 +125,20 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
       ref={lenisRef}
       options={{
         autoRaf: false,
-        // Inércia mais longa com saída exponencial: o scroll desacelera em vez
-        // de parar seco, que é o que fazia cada gesto parecer um passo travado.
-        duration: 1.5,
+        /*
+         * Era 1.5s com wheelMultiplier 0.85 — 0.85 reduz a distância que cada
+         * "clique" da roda cobre, então cada gesto precisava de mais input pra
+         * andar a mesma distância, e ainda demorava 1.5s pra assentar. Empilhado,
+         * ficava pesado: o scroll nunca tinha ficado destravado tempo suficiente
+         * pra alguém sentir essa combinação antes.
+         *
+         * 0.9s com distância natural (1) desacelera com a mesma curva, só que
+         * mais rápido — continua suave, para de parecer que a página está
+         * remando contra o gesto.
+         */
+        duration: 0.9,
         easing: (t: number) => 1 - Math.pow(1 - t, 4),
-        // Cada "clique" da roda cobre menos distância, então o movimento vira
-        // deslizamento contínuo em vez de saltos.
-        wheelMultiplier: 0.85,
+        wheelMultiplier: 1,
       }}
     >
       {children}
