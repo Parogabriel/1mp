@@ -7,49 +7,55 @@ projetados antes de assinar — não depois do relatório.
 
 ```bash
 npm install
-cp .env.example .env.local   # preencha NEXT_PUBLIC_APP_URL
 npm run dev
 ```
 
 Abre em `http://localhost:3000`. Node 20+ recomendado (testado com Node 24;
 o CI roda em 22).
 
-O passo do `.env.local` não é opcional: `src/env.ts` valida o ambiente na
-importação, então uma variável ausente ou malformada para o build com uma
-mensagem dizendo qual é — em vez de virar `undefined` e quebrar em produção.
+**Não há `.env`.** A aplicação não tem segredo nem valor que mude por deploy —
+a única constante pública vive em `src/config.ts`. Clonar e rodar são dois
+comandos.
 
 ## O que está pronto
 
 | Camada | Arquivos | Estado |
 |---|---|---|
-| `domain/` | value-objects, Creator, Brand, Campaign, ScheduledPost | ✅ Completo |
+| `domain/` | value-objects, Creator, Brand, Campaign (+histórico), ScheduledPost | ✅ Completo |
 | `infrastructure/` | roiEngine.ts | ✅ Completo |
-| `application/` | useAuthStore, useThemeStore, useGodModeStore, useWorkspaceStore | ✅ Completo |
-| `presentation/` | Home, Creator Studio, Brand Manager, God Mode | ✅ Completo |
-| `app/` | layout + 4 rotas (cascas finas) | ✅ Completo |
+| `application/` | auth/demoAccounts + 5 stores (auth, theme, accent, godMode, workspace) | ✅ Completo |
+| `presentation/` | design system, gráficos, ilustrações, 5 telas | ✅ Completo |
+| `app/` | layout + 6 rotas + loading/error/not-found | ✅ Completo |
 
-Os 4 portais do brief estão de pé: Home (`/`), Creator Studio
+Seis rotas: Home (`/`), Sobre (`/sobre`), Entrar (`/entrar`), Creator Studio
 (`/creator/dashboard`), Brand Manager (`/brand/dashboard`) e God Mode
 (`/sys-admin/god-mode`).
 
+Para o estado atual detalhado, o que está pendente e as armadilhas já
+descobertas, ver **[CONTINUAR.md](./CONTINUAR.md)**.
+
 ## Roteiro rápido pra ver tudo funcionando
 
-1. Rode `npm run dev` e abra `/sys-admin/god-mode`.
-2. Passcode: `1MP-GOD-2026` (fica em `useGodModeStore.ts` — ver aviso de
-   segurança lá dentro, é gate de demo, não autenticação de verdade).
-3. Clique em **Popular banco local** — isso popula `useWorkspaceStore` com
-   3 criadores, 2 marcas, 6 campanhas e 4 posts, cobrindo as 3 colunas do
-   Kanban e alguns problemas de validação de propósito (um post agendado no
-   passado, um com legenda vazia).
-4. Vá para `/creator/dashboard` — Kanban de campanhas + Post Studio.
-   Cada card mostra só as transições de status válidas (via `canTransition`
-   do domínio); mover é clicar no botão, não arrastar — decisão deliberada,
-   ver "Kanban sem drag-and-drop" abaixo.
-5. Vá para `/brand/dashboard` — crie uma campanha pelo wizard, favorite um
-   criador no CRM, veja o ROI projetado do portfólio.
+0. Abra `/` e role uma tela: em `#produto` estão três telas reais da aplicação
+   dentro de uma moldura de janela. Mexa nos controles da projeção e arraste um
+   card do board — é a mesma store que os painéis usam.
+1. Rode `npm run dev` e abra `/entrar`.
+2. Escolha um perfil. Cada conta abre **apenas** o painel do seu papel —
+   há gate por papel, e tentar o painel do outro lado mostra um aviso com
+   atalho para o correto.
+   - Criadora: `lais@1mp.com.br` · Marca: `contato@vervo.com.br`
+3. No **Creator Studio**: arraste um card entre colunas do Kanban (transição
+   inválida é recusada com toast), clique no título para ver o briefing
+   completo e a linha do tempo, e alterne o Post Studio para o calendário.
+4. No **Brand Manager**: crie uma campanha pelo botão "Nova campanha" no topo
+   e veja o orçamento livre diminuir; explore Analytics de ROI e a aba Perfil
+   da marca.
 
-O seed persiste em `localStorage` (`1mp.workspace`), então sobrevive a um
-reload. "Popular banco local" de novo substitui tudo.
+A store **nasce semeada** com 3 criadores, 2 marcas, 6 campanhas e 4 posts —
+incluindo problemas de validação de propósito (um post no passado, outro sem
+legenda). Persiste em `localStorage` (`1mp.workspace`). O One-Click Seed do
+God Mode (`/sys-admin/god-mode`, passcode `1MP-GOD-2026`) hoje serve para
+**re-semear**, não mais como única forma de ter dados.
 
 ## Decisões de arquitetura registradas
 
@@ -60,16 +66,66 @@ Next.js só reconhece `app/` na raiz ou `src/app/` — um diretório `app`
 aninhado em outra pasta é ignorado pelo roteador. `src/app/` contém só
 re-exports de uma linha; toda a UI real vive em `src/presentation/screens/`.
 
-### Kanban sem drag-and-drop
+### Kanban com drag-and-drop *e* botões
 
-HTML5 drag-and-drop não é operável por teclado por padrão e exigiria uma
-segunda implementação em paralelo pra acessibilidade. Em vez disso, cada
-card expõe como botões as transições válidas a partir do status atual —
-calculadas filtrando `CAMPAIGN_STATUSES` por `canTransition`, direto do
-domínio, sem regra nova na UI. Isso também resolve uma ambiguidade real: como
-`kanbanColumnOf` agrupa vários status numa mesma coluna visual (`paid` e
-`cancelled` caem ambos em "Concluídas", por exemplo), "soltar o card na
-coluna X" não diz para qual status exato ele deveria ir — o botão já diz.
+> Revisado. A versão anterior deste documento defendia **não** ter arrastar.
+> As duas objeções continuam válidas — a solução foi resolvê-las, não evitá-las.
+
+**Acessibilidade:** HTML5 drag-and-drop não é operável por teclado. Por isso os
+botões de transição **continuam existindo** em cada card, calculados filtrando
+`CAMPAIGN_STATUSES` por `canTransition`. Arrastar é atalho de mouse, não o
+único caminho.
+
+**Ambiguidade de destino:** como `kanbanColumnOf` agrupa vários status numa
+mesma coluna (`paid` e `cancelled` caem ambos em "Concluídas"), soltar numa
+coluna não diz para qual status ir. `dropTargetFor`, em `KanbanBoard.tsx`,
+resolve escolhendo o primeiro status daquela coluna que `canTransition` aceita
+a partir do estado atual — e devolve `null` quando nenhum aceita, caso em que o
+card volta e um toast explica o porquê.
+
+### Sem validação de ambiente, porque não há ambiente para validar
+
+Existia um `src/env.ts` com schema Zod validando `NEXT_PUBLIC_APP_URL` na
+importação — 91 linhas para conferir uma constante que o próprio repositório
+fixa, e que só o `metadataBase` do layout consumia. O `zod` inteiro entrava na
+árvore de dependências por causa dela, e clonar o projeto exigia um passo de
+configuração antes de ver a tela.
+
+Virou `src/config.ts`, com a URL e um comentário. Se um backend entrar depois —
+banco, Stripe, provedor de e-mail —, a validação volta, e aí com função: segredo
+de servidor precisa derrubar o build, não virar `undefined` em produção.
+
+### A home mostra o produto rodando, não uma imagem dele
+
+`ProductFrame` é uma moldura de janela em volta de componentes **reais** —
+`RoiCalculator`, `KanbanBoard` e o par `StatStrip`/`BarChart`, lendo a mesma
+store dos painéis. Captura de tela envelhece na primeira mudança de layout e
+passa a mentir sobre o produto; componente vivo não desatualiza. O efeito
+colateral é intencional: arrastar um card na home move a campanha de verdade, e
+ela aparece movida ao entrar no Creator Studio.
+
+Cuidado ao repetir um componente entre home e painel: `RoiCalculator` tem
+`id="roi-heading"` fixo, então montá-lo duas vezes na mesma página duplicaria o
+`id`. Hoje ele existe só dentro do `ProductTour`.
+
+### Nenhum número da home é inventado
+
+A seção "Neste ambiente, agora", os casos com ROI e a faixa de marcas são
+derivados da store e do motor de ROI — contagem de criadores, soma das ofertas,
+projeção por campanha. A versão anterior anunciava "10 mil+ criadores" e
+"R$ 4,2 mi+ movimentados", números que a aplicação não tem como sustentar.
+Depoimentos e marcas são fictícios e rotulados como tal na própria seção.
+
+### Cor de fundo de texto anda em par com a sua tinta
+
+`--accent`/`--accent-ink`, `--signal`/`--signal-ink`, `--violet`/`--violet-ink`.
+O par inverte entre os temas — no claro `--signal` é vermelho fundo e pede texto
+branco; no escuro é coral claro e pede texto escuro. Branco fixo em cima de um
+token de cor funciona num tema e falha no outro.
+
+O piso é 4,5:1 para qualquer texto, nos dois temas, e 11px de tamanho de fonte.
+Os tokens de cor foram calibrados para isso: o `#10b981` original dava 2,54:1
+como texto sobre a superfície clara, e era justamente a cor dos números grandes.
 
 ### `useWorkspaceStore` persiste, mas revive `Date` manualmente
 
@@ -99,12 +155,20 @@ muda de verdade.
 |---|---|
 | `npm run lint` | ESLint 9, incluindo a regra que impede `src/domain` de importar de outra camada |
 | `npm run typecheck` | `tsc --noEmit`, strict + `noUncheckedIndexedAccess` |
-| `npm run build` | build de produção |
+| `npm test` | Vitest sobre o núcleo — 24 testes de domínio e motor de ROI |
+| `npm run build` | build de produção — **pare o `npm run dev` antes**, os dois escrevem no mesmo `.next/` e o dev passa a servir chunks que não existem mais |
+
+Os testes cobrem só `src/domain` e `src/infrastructure` de propósito: é lógica
+pura, sem I/O nem DOM, então roda em `node` sem jsdom. É onde um teste custa
+menos e protege mais — a máquina de transição de campanha e a decisão de
+calcular ROI sobre margem de contribuição, não receita bruta.
 
 Dois hooks rodam automaticamente. O **pre-commit** bloqueia arquivos de
-ambiente (menos `.env.example`), chaves e certificados, e padrões de
-credencial nas linhas adicionadas do diff. O **commit-msg** valida a mensagem
-contra o Conventional Commits com escopo fechado nas camadas do projeto:
+ambiente, chaves e certificados, e padrões de credencial nas linhas adicionadas
+do diff — a regra continua de pé mesmo sem `.env` no projeto, porque o custo é
+zero e o dia em que um aparecer é justamente o dia em que ninguém se lembra. O
+**commit-msg** valida a mensagem contra o Conventional Commits com escopo
+fechado nas camadas do projeto:
 `domain`, `app`, `infra`, `ui`, `store`, `config`, `ci`, `deps`.
 
 Se um hook reprovar, o caminho é corrigir a causa. `--no-verify` desliga a
@@ -112,12 +176,30 @@ Se um hook reprovar, o caminho é corrigir a causa. `--no-verify` desliga a
 push, tirar de lá significa rotacionar a credencial.
 
 O CI repete a checagem de segredos num lugar onde ninguém pode contorná-la, e
-roda lint, tipos e build a cada push e pull request na `main`.
+roda lint, tipos, testes e build a cada push e pull request na `main`.
+
+## Como o trabalho anda
+
+`main` fica sempre verde. O dia de trabalho vive num ramo curto
+`dia/AAAA-MM-DD-<assunto>`, com PR para `main` — mesmo trabalhando sozinho, é o
+PR que dispara o CI antes do merge. Merge com rebase, para o histórico continuar
+linear e legível por camada.
+
+Um commit por mudança coerente, no escopo da camada que dominou a mudança. No
+fim do dia: `typecheck` + `lint` + `test`, atualizar o `CONTINUAR.md` com o que
+entrou e o que ficou, e fechar com `docs: fecha o dia AAAA-MM-DD`.
 
 ## Verificado
 
-`npm run lint`, `npm run typecheck` (strict + `noUncheckedIndexedAccess`) e
-`npm run build` passam limpos. Fluxo testado de ponta a ponta no navegador: seed → transição
-de status no Kanban → criação de campanha no wizard aparecendo no Kanban do
-Creator → CRM favoritando/desfavoritando → analytics de ROI refletindo o
-portfólio da marca.
+`npm run typecheck` e `npm test` (24 testes) passam limpos; `npm run lint` sem
+erros, com um aviso pré-existente em `SmoothScrollProvider`.
+
+Testado de ponta a ponta no navegador: entrar por perfil → gate barrando o
+painel do outro papel → recarregar logado sem ser expulso → arrastar campanha
+no Kanban, com transição inválida recusada → criar campanha e ver o orçamento
+livre diminuir → editar e excluir post → trocar a cor de destaque e ver o site
+inteiro repintar.
+
+Na home, as três abas do `ProductTour` foram exercitadas em 375, 768, 1024 e
+1280 px, sem estouro horizontal em nenhuma delas, e as ilustrações conferidas
+nos dois temas.
