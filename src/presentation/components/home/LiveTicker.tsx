@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cents, formatBRL, type Cents } from '@/domain';
 import { useGodModeStore } from '@/application/stores/useGodModeStore';
 import { useGsapListEnter } from '@/presentation/hooks/useGsapListEnter';
+import { DEMO_BRAND_NAMES } from './demoBrands';
 
 interface Transaction {
   readonly id: string;
@@ -19,13 +20,7 @@ const CREATORS: readonly [string, ...string[]] = [
   '@joaotech',
   '@camilafit',
 ];
-const BRANDS: readonly [string, ...string[]] = [
-  'Vervo',
-  'Norte Cosméticos',
-  'Kaza',
-  'Ferro & Sal',
-  'Ondas',
-];
+const BRANDS: readonly [string, ...string[]] = DEMO_BRAND_NAMES;
 
 // Tupla não-vazia + fallback no índice 0: sob `noUncheckedIndexedAccess` o acesso
 // por índice calculado é `string | undefined`, mesmo quando a lista nunca é vazia.
@@ -41,7 +36,7 @@ const randomTransaction = (): Transaction => ({
 
 const MAX_ROWS = 5;
 
-export function LiveTicker() {
+export function LiveTicker({ className = '' }: { readonly className?: string }) {
   const enabled = useGodModeStore((s) => s.flags.liveTicker);
   const [rows, setRows] = useState<readonly Transaction[]>([]);
   const listRef = useRef<HTMLUListElement>(null);
@@ -68,8 +63,7 @@ export function LiveTicker() {
   return (
     <section
       aria-label="Transações recentes na plataforma"
-      className="border-(length:--border-width) border-line bg-surface-raised"
-      style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-hard)' }}
+      className={`rounded-card border-(length:--border-width) border-line bg-surface-raised shadow-lift ${className}`}
     >
       <header className="flex items-center gap-2 border-b-(length:--border-width) border-line px-4 py-2.5">
         <span
@@ -88,7 +82,7 @@ export function LiveTicker() {
               <span className="font-semibold">{t.creator}</span>
               <span className="text-ink-muted"> × {t.brand}</span>
             </span>
-            <span className="ml-4 font-mono font-bold" style={{ color: 'var(--accent)' }}>
+            <span className="ml-4 tabular-nums font-bold" style={{ color: 'var(--accent)' }}>
               {formatBRL(t.amount)}
             </span>
           </li>

@@ -1,9 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { useRef } from 'react';
-import { useGsapButtonPress } from '@/presentation/hooks/useGsapButtonPress';
-import { useMagneticButton } from '@/presentation/hooks/useMagneticButton';
+import { motion } from 'framer-motion';
 
 /**
  * Os três momentos de uma campanha na plataforma, na ordem em que acontecem.
@@ -37,14 +34,6 @@ const PILLARS = [
  * o primeiro gesto de rolagem já entrega conteúdo novo.
  */
 export function Hero() {
-  const creatorCtaRef = useRef<HTMLAnchorElement>(null);
-  const brandCtaRef = useRef<HTMLAnchorElement>(null);
-
-  useGsapButtonPress(creatorCtaRef);
-  useGsapButtonPress(brandCtaRef);
-  useMagneticButton(creatorCtaRef);
-  useMagneticButton(brandCtaRef);
-
   return (
     <section className="relative flex h-screen flex-col items-center overflow-hidden">
       {/* A malha vem do AmbientBackdrop, que cobre a página inteira — o hero só
@@ -71,31 +60,18 @@ export function Hero() {
             impressões e retorno projetados antes de assinar — não depois do relatório.
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 sm:mt-8 md:mt-10">
-            <Link
-              ref={creatorCtaRef}
-              href="/creator/dashboard"
-              className="px-6 py-3 text-sm font-medium transition-opacity duration-200 hover:opacity-90 sm:px-8 sm:py-3.5"
-              style={{
-                background: 'var(--ink)',
-                color: 'var(--surface)',
-                borderRadius: 'var(--radius-pill)',
-              }}
-            >
-              Sou criador
-            </Link>
-            <Link
-              ref={brandCtaRef}
-              href="/brand/dashboard"
-              className="border-(length:--border-width) border-line px-6 py-3 text-sm font-medium transition-colors duration-200 sm:px-8 sm:py-3.5"
-              style={{
-                borderRadius: 'var(--radius-pill)',
-                background: 'color-mix(in srgb, var(--surface-raised) 80%, transparent)',
-              }}
-            >
-              Sou marca
-            </Link>
-          </div>
+          {/* Os CTAs subiram para o menu "Entrar" do topo. No lugar fica um
+              convite discreto a rolar — sem ele o hero ficava pesado embaixo,
+              já que a seção é h-screen com o painel preso ao rodapé. */}
+          <motion.div
+            aria-hidden="true"
+            className="mt-10 flex flex-col items-center gap-2 text-ink-muted"
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <span className="text-[11px] tracking-widest uppercase">Role para ver</span>
+            <span className="text-sm leading-none">↓</span>
+          </motion.div>
         </div>
 
         {/* Encostado no fim da viewport: sem borda nem raio embaixo, para o painel
@@ -139,7 +115,7 @@ export function Hero() {
                   style={{ background: 'color-mix(in srgb, var(--ink) 5%, transparent)' }}
                 >
                   <p className="flex items-center gap-2 text-sm">
-                    <span className="font-mono text-xs text-ink-muted">{pillar.n}</span>
+                    <span className="tabular-nums text-xs text-ink-muted">{pillar.n}</span>
                     <span className="font-medium">{pillar.label}</span>
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-ink-muted">

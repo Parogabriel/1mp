@@ -25,7 +25,7 @@ export function CreatorShowcase() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p
-            className="font-mono text-xs font-bold tracking-widest uppercase"
+            className="text-xs font-bold tracking-widest uppercase"
             style={{ color: 'var(--violet)' }}
           >
             Em destaque

@@ -1,14 +1,20 @@
 import { SiteHeader } from '@/presentation/components/home/SiteHeader';
 import { Marquee } from '@/presentation/components/ui/Marquee';
 import { Hero } from '@/presentation/components/home/Hero';
-import { LiveTicker } from '@/presentation/components/home/LiveTicker';
-import { RoiCalculator } from '@/presentation/components/home/RoiCalculator';
 import { RevealText } from '@/presentation/components/ui/RevealText';
 import { AmbientBackdrop } from '@/presentation/components/ui/AmbientBackdrop';
-import { BlurReveal } from '@/presentation/components/ui/BlurReveal';
-import { Parallax } from '@/presentation/components/ui/Parallax';
-import { ScrollRolodex } from '@/presentation/components/ui/ScrollRolodex';
+import { WordBand } from '@/presentation/components/ui/WordBand';
+import { BrandStrip } from '@/presentation/components/home/BrandStrip';
+import { ProductTour } from '@/presentation/components/home/ProductTour';
+import { PlatformNumbers } from '@/presentation/components/home/PlatformNumbers';
 import { CreatorShowcase } from '@/presentation/components/home/CreatorShowcase';
+import { HowItWorks } from '@/presentation/components/home/HowItWorks';
+import { ProofCases } from '@/presentation/components/home/ProofCases';
+import { WhyUs } from '@/presentation/components/home/WhyUs';
+import { Testimonials } from '@/presentation/components/home/Testimonials';
+import { AboutUs } from '@/presentation/components/home/AboutUs';
+import { Pricing } from '@/presentation/components/home/Pricing';
+import { Faq } from '@/presentation/components/home/Faq';
 import { TrustFooter } from '@/presentation/components/home/TrustFooter';
 
 const MARQUEE_ITEMS = [
@@ -18,13 +24,22 @@ const MARQUEE_ITEMS = [
   'One Million Posts',
 ] as const;
 
-const STATS = [
-  { value: '10 mil+', label: 'Criadores verificados' },
-  { value: 'R$ 4,2 mi+', label: 'Movimentados na plataforma' },
-  { value: '500+', label: 'Campanhas entregues' },
-  { value: '0%', label: 'Comissão oculta' },
-] as const;
-
+/**
+ * Composição da home.
+ *
+ * A ordem responde a quatro queixas concretas sobre a versão anterior: a página
+ * não mostrava o produto, tudo tinha a mesma forma, faltava conteúdo de venda e
+ * faltava imagem.
+ *
+ * Daí o produto de verdade subir para logo depois da primeira dobra
+ * (`ProductTour`), o argumento passar por prova antes de chegar ao preço
+ * (`ProofCases` → `Testimonials` → `Pricing`), e as seções vizinhas nunca
+ * repetirem o mesmo esqueleto: trilho vertical, lista larga, citação
+ * assimétrica, grade de cards e acordeão se alternam de propósito.
+ *
+ * As faixas de interrupção (marquee e rolodex) caíram de cinco para três — eram
+ * elas que davam à rolagem a sensação de estar sempre no mesmo lugar.
+ */
 export function HomeScreen() {
   return (
     <main className="relative">
@@ -36,51 +51,13 @@ export function HomeScreen() {
 
       <Marquee items={MARQUEE_ITEMS} tone="accent" />
 
-      <section
-        id="plataforma"
-        className="mx-auto grid max-w-6xl scroll-mt-24 gap-12 px-6 py-24 md:grid-cols-[0.85fr_1fr] md:items-center"
-      >
-        <div>
-          <p
-            className="font-mono text-xs font-bold tracking-widest uppercase"
-            style={{ color: 'var(--violet)' }}
-          >
-            A plataforma em números
-          </p>
-          <h2 className="font-display mt-3 text-3xl leading-[1.05] font-bold tracking-tighter md:text-5xl">
-            Tudo o que a marca vê antes de assinar.
-          </h2>
-          <p className="mt-5 max-w-sm text-ink-muted">
-            Alcance, impressões e retorno projetados entram na negociação como número,
-            não como promessa de relatório.
-          </p>
-        </div>
+      <BrandStrip />
 
-        {/* Cada card num plano próprio: as distâncias diferentes de parallax é que
-            dão profundidade, e a coluna deslocada evita a grade rígida. */}
-        <dl className="grid grid-cols-2 gap-5">
-          {STATS.map((stat, i) => (
-            <Parallax key={stat.label} distance={i % 2 === 0 ? 34 : 68}>
-              <div
-                className={`h-full border-(length:--border-width) border-line bg-surface-raised px-6 py-7 ${
-                  i % 2 === 1 ? 'md:translate-y-8' : ''
-                }`}
-                style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-hard)' }}
-              >
-                <dt
-                  className="font-display text-4xl leading-none font-bold"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  {stat.value}
-                </dt>
-                <dd className="mt-2 text-xs tracking-wide text-ink-muted uppercase">
-                  {stat.label}
-                </dd>
-              </div>
-            </Parallax>
-          ))}
-        </dl>
-      </section>
+      {/* O produto antes da explicação sobre o produto: quem rola uma tela já vê
+          a aplicação rodando, em vez de mais um parágrafo sobre ela. */}
+      <ProductTour />
+
+      <PlatformNumbers />
 
       <section className="mx-auto max-w-4xl px-6 py-16 text-center">
         <h2 className="font-display text-3xl leading-tight font-bold tracking-tight md:text-5xl">
@@ -93,26 +70,27 @@ export function HomeScreen() {
         </h2>
       </section>
 
-      <ScrollRolodex words={['Número na mesa']} variant="band" />
+      <WordBand word="Número na mesa" />
 
-      <div id="projecao" className="mx-auto max-w-6xl scroll-mt-24 px-6 pb-16">
-        <div className="grid gap-6 md:grid-cols-[1fr_1.4fr]">
-          <BlurReveal>
-            <LiveTicker />
-          </BlurReveal>
-          <BlurReveal delay={0.1}>
-            <RoiCalculator />
-          </BlurReveal>
-        </div>
-      </div>
+      <HowItWorks />
 
-      <Marquee items={MARQUEE_ITEMS} tone="surface" />
+      <ProofCases />
 
-      <ScrollRolodex words={['Transparência']} variant="band" />
+      <WhyUs />
+
+      <WordBand word="Transparência" />
 
       <CreatorShowcase />
 
-      <ScrollRolodex words={['Pagamento em custódia']} variant="band" />
+      <Testimonials />
+
+      <Pricing />
+
+      <AboutUs />
+
+      <Faq />
+
+      <WordBand word="Pagamento em custódia" />
 
       <TrustFooter />
     </main>
