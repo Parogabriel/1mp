@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import {
   CAPTION_LIMITS,
   FORMATS_BY_PLATFORM,
@@ -28,17 +28,17 @@ function toLocalInput(d: Date): string {
 }
 
 interface PostEditorModalProps {
-  readonly post: ScheduledPost | null;
+  /** Nunca nulo: quem chama monta o modal com `key={post.id}` e desmonta ao fechar. */
+  readonly post: ScheduledPost;
   readonly onClose: () => void;
 }
 
 /**
  * Edição, avanço de status e exclusão de um post.
  *
- * `updateScheduledPost` e `removeScheduledPost` existiam na store desde o
- * início e **nunca foram chamados por nenhuma tela** — dava para criar um post
- * e nunca mais mexer nele. Os outros seis status do domínio também não tinham
- * como ser alcançados.
+ * `updateScheduledPost` e `removeScheduledPost` existiam na store desde o início
+ * e nunca foram chamados por nenhuma tela — dava para criar um post e nunca mais
+ * mexer nele.
  */
 export function PostEditorModal({ post, onClose }: PostEditorModalProps) {
   const updatePost = useWorkspaceStore((s) => s.updateScheduledPost);
@@ -46,27 +46,12 @@ export function PostEditorModal({ post, onClose }: PostEditorModalProps) {
   const toast = useToast();
   const formId = useId();
 
-  const [platform, setPlatform] = useState<Platform>('instagram');
-  const [format, setFormat] = useState<PostFormat>('reel');
-  const [caption, setCaption] = useState('');
-  const [hashtagsInput, setHashtagsInput] = useState('');
-  const [scheduledFor, setScheduledFor] = useState('');
+  const [platform, setPlatform] = useState<Platform>(post.platform);
+  const [format, setFormat] = useState<PostFormat>(post.format);
+  const [caption, setCaption] = useState(post.caption);
+  const [hashtagsInput, setHashtagsInput] = useState(post.hashtags.join(', '));
+  const [scheduledFor, setScheduledFor] = useState(toLocalInput(post.scheduledFor));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  // Recarrega os campos quando outro post é aberto — sem isto o modal
-  // mostraria os valores do post anterior.
-  useEffect(() => {
-    if (!post) return;
-    setPlatform(post.platform);
-    setFormat(post.format);
-    setCaption(post.caption);
-    setHashtagsInput(post.hashtags.join(', '));
-    setScheduledFor(toLocalInput(post.scheduledFor));
-  }, [post]);
-
-  // Sem post não há o que montar. O modal só existe quando há algo para editar,
-  // então desmontar é mais simples que manter um diálogo vazio fechado.
-  if (!post) return null;
 
   const hashtags = hashtagsInput
     .split(',')

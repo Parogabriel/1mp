@@ -30,7 +30,17 @@ export function DonutChart({ data, caption, size = 148, className = '' }: DonutC
 
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
-  let offset = 0;
+
+  // Cada fatia começa onde as anteriores terminaram. A soma é refeita por fatia em
+  // vez de acumulada numa variável: mutar valor ao longo do render quebra sob
+  // render concorrente, e um donut tem poucas fatias — o custo quadrático é
+  // teórico aqui.
+  const fatias = data.map((datum, i) => ({
+    label: datum.label,
+    dash: (datum.value / total) * circumference,
+    offset: (data.slice(0, i).reduce((s, d) => s + d.value, 0) / total) * circumference,
+    color: datum.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+  }));
 
   return (
     <div className={`flex flex-wrap items-center gap-6 ${className}`}>
@@ -43,25 +53,19 @@ export function DonutChart({ data, caption, size = 148, className = '' }: DonutC
         height={size}
         className="shrink-0 -rotate-90"
       >
-        {data.map((datum, i) => {
-          const share = datum.value / total;
-          const dash = share * circumference;
-          const element = (
-            <circle
-              key={datum.label}
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke={datum.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]}
-              strokeWidth="14"
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={-offset}
-            />
-          );
-          offset += dash;
-          return element;
-        })}
+        {fatias.map((fatia) => (
+          <circle
+            key={fatia.label}
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke={fatia.color}
+            strokeWidth="14"
+            strokeDasharray={`${fatia.dash} ${circumference - fatia.dash}`}
+            strokeDashoffset={-fatia.offset}
+          />
+        ))}
       </svg>
 
       <ul aria-hidden="true" className="min-w-0 flex-1 space-y-2">

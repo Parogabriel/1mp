@@ -46,9 +46,17 @@ export function LiveTicker({ className = '' }: { readonly className?: string }) 
   useEffect(() => {
     if (!enabled) return;
 
-    // Popula na montagem em vez de no estado inicial: gerar dados aleatórios
-    // durante o render causaria mismatch de hidratação (servidor e client
-    // produziriam valores diferentes para o mesmo HTML).
+    /*
+     * Popula na montagem, não no estado inicial: gerar valor aleatório durante o
+     * render dá mismatch de hidratação, porque servidor e client produziriam
+     * números diferentes para o mesmo HTML.
+     *
+     * O React Compiler reclama de setState síncrono dentro de efeito, e está certo
+     * no caso geral. Aqui a fonte do dado é externa ao React (um gerador sobre um
+     * relógio) e a alternativa seria deixar a fita vazia por 3,2s na primeira
+     * carga, o que parece defeito.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(Array.from({ length: MAX_ROWS }, randomTransaction));
 
     const id = window.setInterval(() => {

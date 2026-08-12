@@ -66,10 +66,18 @@ export function CreatorOverview({ creatorId }: CreatorOverviewProps) {
     [allCampaigns, creatorId],
   );
 
+  /*
+   * "Próximas entregas" = o que ainda não foi publicado, por data.
+   *
+   * Antes o filtro era `scheduledFor >= Date.now()`, que tinha dois problemas: ler
+   * o relógio durante o render é impuro, e post com data vencida e ainda não
+   * publicado — justamente o que o criador precisa ver aqui — desaparecia da lista.
+   * O status responde a mesma pergunta sem consultar a hora.
+   */
   const posts = useMemo(
     () =>
       [...selectPostsByCreator(allPosts, creatorId)]
-        .filter((p) => p.scheduledFor.getTime() >= Date.now())
+        .filter((p) => p.status !== 'published')
         .sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime()),
     [allPosts, creatorId],
   );

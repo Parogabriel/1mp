@@ -125,10 +125,14 @@ export function HandsNetworkCanvas({
 }: HandsNetworkCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Em ref, não em dependência: mudar a intensidade não pode reamostrar a malha,
-  // senão os pontos saltariam de lugar a cada ajuste.
+  // Em ref, não em dependência do efeito de desenho: mudar a intensidade não pode
+  // reamostrar a malha, senão os pontos saltariam de lugar a cada ajuste. A
+  // escrita fica num efeito próprio porque mutar ref durante o render quebra sob
+  // render concorrente, em que o React pode reexecutar o corpo do componente.
   const intensityRef = useRef(intensity);
-  intensityRef.current = intensity;
+  useEffect(() => {
+    intensityRef.current = intensity;
+  }, [intensity]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

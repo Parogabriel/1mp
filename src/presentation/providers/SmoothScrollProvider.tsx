@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { ReactLenis, type LenisRef } from 'lenis/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -9,6 +9,23 @@ gsap.registerPlugin(ScrollTrigger);
 
 interface SmoothScrollProviderProps {
   readonly children: ReactNode;
+}
+
+const CONSULTA = '(prefers-reduced-motion: reduce)';
+
+/**
+ * `matchMedia` é estado externo, então é lido por `useSyncExternalStore` em vez
+ * de `useState` mais efeito. Além de dispensar o setState síncrono no efeito, isto
+ * passa a acompanhar mudanças da preferência durante a sessão.
+ *
+ * O snapshot de servidor devolve `false`: no SSR não há `window`, e assumir que
+ * há preferência de movimento reduzido faria o HTML chegar sem o Lenis para todo
+ * mundo.
+ */
+function assinarMovimentoReduzido(onChange: () => void): () => void {
+  const mq = window.matchMedia(CONSULTA);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
 }
 
 /**
@@ -22,11 +39,12 @@ interface SmoothScrollProviderProps {
  */
 export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
   const lenisRef = useRef<LenisRef>(null);
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    setEnabled(!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  }, []);
+  const reduzido = useSyncExternalStore(
+    assinarMovimentoReduzido,
+    () => window.matchMedia(CONSULTA).matches,
+    () => false,
+  );
+  const enabled = !reduzido;
 
   useEffect(() => {
     if (!enabled) return;

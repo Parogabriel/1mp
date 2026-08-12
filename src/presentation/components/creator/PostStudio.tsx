@@ -179,7 +179,12 @@ export function PostStudio({ creatorId }: PostStudioProps) {
         </ul>
       )}
 
-      <PostEditorModal post={editing} onClose={() => setEditing(null)} />
+      {/* `key` no id do post: abrir outro post remonta o editor, e o formulário
+          nasce já com os valores certos. Sem isso ele precisaria sincronizar seis
+          campos num efeito a cada troca. */}
+      {editing && (
+        <PostEditorModal key={editing.id} post={editing} onClose={() => setEditing(null)} />
+      )}
     </div>
   );
 }

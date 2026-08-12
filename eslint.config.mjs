@@ -1,15 +1,10 @@
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { FlatCompat } from '@eslint/eslintrc';
-
-const compat = new FlatCompat({
-  baseDirectory: dirname(fileURLToPath(import.meta.url)),
-});
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import nextTypescript from 'eslint-config-next/typescript';
 
 /**
  * A dependência entre as camadas aponta só para dentro: o domínio não conhece
- * ninguém, e quem está fora é que o importa. Hoje o código respeita isso por
- * disciplina; a regra abaixo impede que pare de respeitar sem alguém notar.
+ * ninguém, e quem está fora é que o importa. A regra abaixo impede que isso
+ * pare de valer sem alguém notar.
  *
  * Os padrões são casados contra a string do import, então cobrem tanto o alias
  * (`@/application/...`) quanto o caminho relativo (`../application/...`).
@@ -23,7 +18,11 @@ const eslintConfig = [
     ignores: ['.next/**', 'node_modules/**', 'out/**', 'build/**', 'next-env.d.ts'],
   },
 
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  // Flat config nativo. O `FlatCompat` do @eslint/eslintrc não serve a partir do
+  // eslint-config-next 16: o pacote passou a exportar array de flat config, e
+  // passá-lo pelo shim estoura com referência circular em `property 'react'`.
+  ...nextCoreWebVitals,
+  ...nextTypescript,
 
   {
     files: ['src/domain/**/*.{ts,tsx}'],
