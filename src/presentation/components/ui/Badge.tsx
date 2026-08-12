@@ -10,11 +10,16 @@ const TONE_BG: Readonly<Record<BadgeTone, string>> = {
   amber: 'var(--amber)',
 };
 
-/** Lima e âmbar são claros nos dois temas — texto escuro sempre, não branco. */
+/**
+ * Lima e âmbar são claros nos dois temas — texto escuro sempre, não branco.
+ *
+ * Sinal inverte entre os temas (vermelho fundo no claro, coral claro no
+ * escuro), então segue o par `--signal-ink` em vez de branco fixo.
+ */
 const TONE_TEXT: Readonly<Record<BadgeTone, string>> = {
   accent: 'var(--accent-ink)',
-  signal: '#ffffff',
-  violet: '#ffffff',
+  signal: 'var(--signal-ink)',
+  violet: 'var(--violet-ink)',
   lime: '#0b0f17',
   amber: '#1a1024',
 };
@@ -27,7 +32,7 @@ interface BadgeProps {
 export function Badge({ tone = 'accent', children }: BadgeProps) {
   return (
     <span
-      className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold tracking-widest whitespace-nowrap uppercase"
+      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold tracking-widest whitespace-nowrap uppercase"
       style={{
         background: TONE_BG[tone],
         color: TONE_TEXT[tone],

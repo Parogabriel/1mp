@@ -16,12 +16,42 @@
   --surface: #fafafa;
   --surface-raised: #ffffff;
   --ink: #0b0f17;
-  --ink-muted: #6b7280;
-  --accent: #10b981;
+  /*
+   * Era #6b7280, que dá 4,63:1 sobre #fafafa — passa raspando no AA e falha na
+   * prática, porque quase todo texto secundário aqui é pequeno, em maiúsculas
+   * espaçadas, e ainda por cima assentado sobre as lavagens de cor do
+   * AmbientBackdrop. Este dá 7,2:1 e continua claramente subordinado ao --ink.
+   */
+  --ink-muted: #4b5563;
+  /*
+   * Era #10b981. Sobre superfície clara ele dava 2,54:1 como texto — e a cor de
+   * ação é exatamente o que a página imprime grande: ROI, valor da campanha,
+   * total do orçamento. Branco em cima dele (botão primário, badge, marquee)
+   * dava os mesmos 2,54:1, então o problema aparecia dos dois lados.
+   *
+   * Este emerald mais fundo resolve os dois de uma vez: 5,2:1 como texto sobre
+   * a superfície e 5,5:1 para o branco por cima. No tema escuro o lima continua
+   * como está — lá o contraste nunca foi o problema.
+   */
+  --accent: #047857;
   --accent-ink: #ffffff;
   --lime: #84c916;
-  --signal: #ff6b6b;
-  --violet: #6366f1;
+  /*
+   * O coral #ff6b6b só funciona sobre o obsidian. No claro dava 2,66:1 como
+   * texto — e ele carrega ROI negativo, mensagem de erro e o anel de foco, que
+   * são justamente os avisos que ninguém pode deixar de ler. O tema escuro
+   * mantém o coral original.
+   */
+  --signal: #dc2626;
+  /*
+   * O par tinta/fundo do sinal, pelo mesmo motivo de `--accent-ink`: no claro o
+   * sinal é vermelho fundo e pede texto branco; no escuro é coral claro e pede
+   * texto escuro. Branco fixo dava 2,78:1 no badge do tema escuro.
+   */
+  --signal-ink: #ffffff;
+  /* #6366f1 dava 4,28:1 nas sobrelinhas de 12px; este dá 6,0:1. */
+  --violet: #4f46e5;
+  --violet-ink: #ffffff;
   --amber: #f59e0b;
   --line: #e5e7eb;
 
@@ -30,15 +60,21 @@
   --radius-pill: 999px;
   --shadow-hard: 0 14px 32px rgb(11 15 23 / 0.08);
   --shadow-hard-sm: 0 8px 18px rgb(11 15 23 / 0.06);
-  --shadow-glow: 0 14px 32px rgb(16 185 129 / 0.3);
+  --shadow-glow: 0 14px 32px rgb(4 120 87 / 0.28);
 
   /*
    * Fundo ambiente. Sobre superfície clara o desfoque lava a cor, então o claro
    * precisa de orbe bem mais opaco que o escuro para render a mesma presença.
    * A linha do grid é tinta escura aqui — `--line` sumiria sobre #fafafa.
    */
-  --backdrop-orb-opacity: 0.85;
-  --backdrop-grid-color: rgb(11 15 23 / 0.07);
+  /*
+   * Baixado de 0.85. O texto das seções assenta direto sobre estas lavagens —
+   * não há superfície opaca entre os dois — então cada ponto de opacidade aqui
+   * é contraste que o parágrafo perde. Continua dando cor ao fundo; parou de
+   * disputar com a leitura.
+   */
+  --backdrop-orb-opacity: 0.5;
+  --backdrop-grid-color: rgb(11 15 23 / 0.045);
 
   /*
    * Véu sobre o vídeo do hero. O vídeo é claro, então aqui basta um toque para
@@ -54,12 +90,20 @@
   --surface: #0b0f17;
   --surface-raised: #141826;
   --ink: #f5f5fa;
-  --ink-muted: #8b8fa3;
+  /* Mesmo raciocínio do claro: 6,0:1 → 7,6:1 sobre o obsidian. */
+  --ink-muted: #9ca3af;
   --accent: #a3e635;
   --accent-ink: #0b0f17;
   --lime: #a3e635;
   --signal: #ff6b6b;
+  --signal-ink: #1a1024;
   --violet: #8b5cf6;
+  /*
+   * Branco sobre este violeta dá 4,23:1 — abaixo do mínimo. Tinta escura dá
+   * 4,55:1 e passa. O violeta em si não pode escurecer: ele também é a cor das
+   * sobrelinhas, onde precisa clarear contra o obsidian, não o contrário.
+   */
+  --violet-ink: #0b0f17;
   --amber: #f59e0b;
   --line: #1e2130;
 
@@ -72,8 +116,8 @@
   --shadow-glow: 0 0 36px rgb(163 230 53 / 0.45);
 
   /* No obsidian o orbe já brilha sozinho — passar disso vira névoa. */
-  --backdrop-orb-opacity: 0.5;
-  --backdrop-grid-color: rgb(245 245 250 / 0.05);
+  --backdrop-orb-opacity: 0.38;
+  --backdrop-grid-color: rgb(245 245 250 / 0.035);
 
   /* Texto claro sobre vídeo claro não se lê: aqui o véu escurece de verdade. */
   --hero-scrim-top: 52%;

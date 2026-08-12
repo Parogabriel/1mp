@@ -39,7 +39,7 @@ export function GodModeScreen() {
 
       <div className="mt-10">
         <p
-          className="font-mono text-xs font-bold tracking-widest uppercase"
+          className="text-xs font-bold tracking-widest uppercase"
           style={{ color: 'var(--signal)' }}
         >
           Sys-admin
@@ -86,7 +86,7 @@ function PasscodeGate() {
         autoComplete="off"
         aria-invalid={error}
         aria-describedby={error ? errorId : undefined}
-        className="mt-2 w-full border-(length:--border-width) border-line bg-surface px-3 py-2 font-mono text-sm"
+        className="mt-2 w-full border-(length:--border-width) border-line bg-surface px-3 py-2 tabular-nums text-sm"
         style={{ borderRadius: 'var(--radius)' }}
       />
 
@@ -154,7 +154,7 @@ function ControlPanel() {
                 aria-checked={flags[key]}
                 aria-label={FLAG_LABELS[key].label}
                 onClick={() => toggleFlag(key)}
-                className="shrink-0 border-(length:--border-width) border-line px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase"
+                className="shrink-0 border-(length:--border-width) border-line px-3 py-1.5 text-[11px] font-bold tracking-widest uppercase"
                 style={{
                   borderRadius: 'var(--radius-pill)',
                   background: flags[key] ? 'var(--accent)' : 'transparent',
@@ -180,7 +180,7 @@ function ControlPanel() {
           <label htmlFor={feeId} className="text-xs font-bold tracking-widest uppercase">
             Percentual sobre cada campanha fechada
           </label>
-          <output htmlFor={feeId} className="font-mono text-2xl font-bold" style={{ color: 'var(--accent)' }}>
+          <output htmlFor={feeId} className="tabular-nums text-2xl font-normal" style={{ color: 'var(--accent)' }}>
             {toPercent(platformFee).toFixed(1)}%
           </output>
         </div>

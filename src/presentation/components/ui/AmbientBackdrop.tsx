@@ -52,7 +52,9 @@ export function AmbientBackdrop() {
 
       {/* A malha corre por trás da página inteira, discreta o bastante para não
           competir com texto em nenhuma seção. */}
-      <HandsNetworkCanvas intensity={0.4} />
+      {/* 0.4 → 0.25: a malha passava por trás de parágrafo inteiro e o texto
+          ficava sobre linha, não sobre superfície. */}
+      <HandsNetworkCanvas intensity={0.25} />
     </div>
   );
 }
