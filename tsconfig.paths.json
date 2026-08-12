@@ -1,0 +1,9 @@
+{
+  "$comment": "Mescle este bloco no seu tsconfig.json. Sem o alias @/*, todos os imports das camadas quebram.",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  }
+}
