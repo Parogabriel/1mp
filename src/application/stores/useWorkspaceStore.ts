@@ -5,6 +5,8 @@ import {
   asCampaignId,
   asCreatorId,
   asScheduledPostId,
+  cents,
+  formatBRL,
   fromBRL,
   fromPercent,
   kanbanColumnOf,
@@ -14,6 +16,7 @@ import {
   InvalidTransitionError,
   type Brand,
   type BrandId,
+  type BrandSegment,
   type Campaign,
   type CampaignBrief,
   type CampaignId,
@@ -30,6 +33,18 @@ import {
 import { useGodModeStore } from './useGodModeStore';
 
 export type MoveCampaignResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly message: string };
+
+/** Só o que a marca pode editar. `committedCents` fica de fora: é derivado das campanhas. */
+export interface BrandPatch {
+  readonly tradeName?: string;
+  readonly legalName?: string;
+  readonly segment?: BrandSegment;
+  readonly budgetCents?: Cents;
+}
+
+export type UpdateBrandResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly message: string };
 
@@ -71,6 +86,8 @@ interface WorkspaceState {
   readonly updateScheduledPost: (id: ScheduledPostId, patch: ScheduledPostPatch) => void;
   readonly removeScheduledPost: (id: ScheduledPostId) => void;
 
+  readonly updateBrand: (id: BrandId, patch: BrandPatch) => UpdateBrandResult;
+
   readonly favoriteCreator: (brandId: BrandId, creatorId: CreatorId) => void;
   readonly unfavoriteCreator: (brandId: BrandId, creatorId: CreatorId) => void;
 
@@ -89,14 +106,13 @@ const EMPTY_STATE = {
 /**
  * Revive as datas ao reidratar do localStorage.
  *
- * JSON.stringify transforma Date em string ISO e o parse devolve string — o tipo
- * continua dizendo `Date`, mas em runtime não é. Sem esta passagem, `transitionTo`,
- * `validatePost` e qualquer `Intl.format` quebram depois de um reload, e o bug
- * aparece longe daqui. Precisa vir ANTES de `create(persist(...))`: o `merge` da
- * store roda de forma síncrona durante a criação (não em um efeito depois), então
- * qualquer `const` que ele referencie tem que já estar inicializada nesse ponto —
- * senão é `ReferenceError` de temporal dead zone, e o zustand engole o erro sem
- * avisar (a store some, quieta, e volta pro estado vazio).
+ * O parse devolve string onde o tipo promete `Date`, e aí `transitionTo`,
+ * `validatePost` e `Intl.format` quebram depois de um reload, longe daqui.
+ *
+ * Tudo abaixo precisa estar declarado ANTES de `create(persist(...))`: o `merge`
+ * roda síncrono durante a criação da store, então um `const` posterior estaria
+ * na temporal dead zone — e o zustand engole esse erro em silêncio, deixando a
+ * store voltar vazia sem nada no console.
  */
 type PersistedWorkspace = Pick<
   WorkspaceState,
@@ -113,13 +129,7 @@ const mapValues = <T, R>(record: Readonly<Record<string, T>>, fn: (value: T) => 
   return result;
 };
 
-/**
- * Perfil de vitrine dos criadores do seed, por id.
- *
- * Fica fora de `buildSeedData` porque a migração de estado persistido também
- * precisa dele — declarado antes de `create()` de propósito: `merge` roda
- * síncrono na criação da store e leria a const na temporal dead zone.
- */
+/** Perfil de vitrine dos criadores do seed. A migração de estado antigo também lê daqui. */
 const SEED_CREATOR_PROFILES: Readonly<
   Record<string, Pick<Creator, 'location' | 'verified' | 'avatarUrl'>>
 > = {
@@ -147,11 +157,8 @@ const FALLBACK_PROFILE: Pick<Creator, 'location' | 'verified' | 'avatarUrl'> = {
 };
 
 /**
- * Migra criadores salvos antes de `location`/`verified`/`avatarUrl` existirem.
- *
- * Sem isso a UI lê `location.city` de `undefined` e a tela quebra. Criadores do
- * seed recuperam o perfil real pelo id — quem semeou antes desta versão não
- * precisa semear de novo; campanhas e posts do usuário ficam intactos.
+ * Migra criadores salvos antes de `location`/`verified`/`avatarUrl` existirem —
+ * sem o fallback a UI lê `location.city` de `undefined` e a tela quebra.
  */
 function reviveCreator(c: Creator): Creator {
   const profile = SEED_CREATOR_PROFILES[c.id] ?? FALLBACK_PROFILE;
@@ -161,6 +168,25 @@ function reviveCreator(c: Creator): Creator {
     location: c.location ?? profile.location,
     verified: c.verified ?? profile.verified,
     avatarUrl: c.avatarUrl ?? profile.avatarUrl,
+  };
+}
+
+/**
+ * Revive datas e migra campanha salva antes de `history` existir. O registro
+ * sintético usa `createdAt` e o status atual — é o mínimo verdadeiro que dá
+ * para afirmar sobre uma campanha cujo passado não foi gravado.
+ */
+function reviveCampaign(c: Campaign): Campaign {
+  const createdAt = asDate(c.createdAt);
+
+  return {
+    ...c,
+    startsAt: asDate(c.startsAt),
+    endsAt: asDate(c.endsAt),
+    createdAt,
+    history: Array.isArray(c.history)
+      ? c.history.map((e) => ({ ...e, at: asDate(e.at) }))
+      : [{ from: null, to: c.status, at: createdAt }],
   };
 }
 
@@ -178,12 +204,9 @@ function revivePersisted(persisted: unknown): Partial<PersistedWorkspace> {
     brands: mapValues(brands, (b) => ({ ...b, createdAt: asDate(b.createdAt) })) as Readonly<
       Record<BrandId, Brand>
     >,
-    campaigns: mapValues(campaigns, (c) => ({
-      ...c,
-      startsAt: asDate(c.startsAt),
-      endsAt: asDate(c.endsAt),
-      createdAt: asDate(c.createdAt),
-    })) as Readonly<Record<CampaignId, Campaign>>,
+    campaigns: mapValues(campaigns, reviveCampaign) as Readonly<
+      Record<CampaignId, Campaign>
+    >,
     scheduledPosts: mapValues(scheduledPosts, (p) => ({
       ...p,
       scheduledFor: asDate(p.scheduledFor),
@@ -196,12 +219,9 @@ function revivePersisted(persisted: unknown): Partial<PersistedWorkspace> {
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set, get) => ({
-      // Nasce com os dados de demonstração em vez de vazia.
-      //
-      // A vitrine da home e o CRM da marca somem quando não há criadores, e
-      // antes disso só o One-Click Seed do God Mode — atrás de passcode —
-      // populava a store. Quem chegasse com localStorage limpo via um site pela
-      // metade. Estado persistido, quando existe, sobrescreve isto no `merge`.
+      // Nasce semeada: sem isso, quem chega com localStorage limpo vê a home e o
+      // CRM vazios, e só o One-Click Seed — atrás de passcode — os preenchia.
+      // Estado persistido, quando existe, sobrescreve isto no `merge`.
       ...buildSeedData(),
       seededAt: null as Date | null,
 
@@ -222,6 +242,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       createCampaign: (input) => {
+        const now = new Date();
         const campaign: Campaign = {
           id: asCampaignId(crypto.randomUUID()),
           brandId: input.brandId,
@@ -232,9 +253,26 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           offerCents: input.offerCents,
           startsAt: input.startsAt,
           endsAt: input.endsAt,
-          createdAt: new Date(),
+          createdAt: now,
+          // O nascimento em `draft` também é um evento: sem ele a linha do
+          // tempo começaria no ar, sem ponto de partida.
+          history: [{ from: null, to: 'draft', at: now }],
         };
-        set({ campaigns: { ...get().campaigns, [campaign.id]: campaign } });
+        // Sem comprometer o valor, `availableBudget` nunca diminui: dava para
+        // criar cem campanhas sem a barra se mover, e o `canAfford` que trava o
+        // wizard ficava decorativo.
+        const brand = get().brands[input.brandId];
+        const brands = brand
+          ? {
+              ...get().brands,
+              [brand.id]: {
+                ...brand,
+                committedCents: cents(brand.committedCents + campaign.offerCents),
+              },
+            }
+          : get().brands;
+
+        set({ campaigns: { ...get().campaigns, [campaign.id]: campaign }, brands });
         return campaign;
       },
 
@@ -267,6 +305,35 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const rest = { ...get().scheduledPosts };
         delete rest[id];
         set({ scheduledPosts: rest });
+      },
+
+      updateBrand: (id, patch) => {
+        const brand = get().brands[id];
+        if (!brand) return { ok: false, message: 'Marca não encontrada.' };
+
+        const tradeName = patch.tradeName ?? brand.tradeName;
+        if (tradeName.trim().length === 0) {
+          return { ok: false, message: 'O nome fantasia não pode ficar vazio.' };
+        }
+
+        // Orçamento abaixo do já comprometido deixaria `availableBudget`
+        // negativo e o `canAfford` do wizard sem sentido. A store recusa em vez
+        // de aceitar um estado que o domínio não sabe representar.
+        const budgetCents = patch.budgetCents ?? brand.budgetCents;
+        if (budgetCents < brand.committedCents) {
+          return {
+            ok: false,
+            message: `O orçamento não pode ficar abaixo de ${formatBRL(brand.committedCents)}, que já está comprometido em campanhas.`,
+          };
+        }
+
+        set({
+          brands: {
+            ...get().brands,
+            [id]: { ...brand, ...patch, tradeName, budgetCents },
+          },
+        });
+        return { ok: true };
       },
 
       favoriteCreator: (brandId, creatorId) => {
@@ -307,13 +374,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 );
 
 /**
- * Derivações puras sobre as coleções da store.
- *
- * Elas recebem o Record cru em vez de `WorkspaceState` de propósito. No Zustand v5
- * o snapshot é comparado por identidade: um selector que monta um objeto/array novo
- * a cada chamada nunca "estabiliza" e derruba o componente em re-render infinito.
- * Assinando a coleção crua (referência estável) e derivando dentro de `useMemo`,
- * o recálculo acontece só quando a coleção muda de verdade.
+ * Derivações puras. Recebem o `Record` cru, não `WorkspaceState`: no Zustand v5 o
+ * snapshot é comparado por identidade, então um selector que monta objeto novo a
+ * cada chamada nunca estabiliza e derruba o componente em re-render infinito.
+ * Quem consome assina a coleção e deriva dentro de `useMemo`.
  */
 
 /** Agrupa campanhas nas 3 colunas do Kanban. O agrupamento vem do domínio. */
@@ -371,10 +435,10 @@ export const selectFavoriteCreators = (
 // ── Seed ─────────────────────────────────────────────────────────────────────
 
 /**
- * Declaração de função, não `const` de arrow: `buildSeedData` roda durante a
- * criação da store (o estado inicial já nasce semeado) e é hoisted, mas um
- * `const` declarado depois do `create()` ainda estaria na temporal dead zone
- * nesse instante — dava `Cannot access 'indexBy' before initialization`.
+ * Declaração de função, não `const` de arrow — e o mesmo vale para `addDays` e
+ * `buildSeedData` abaixo. A store nasce semeada, então `buildSeedData()` roda
+ * durante `create()`; um `const` declarado depois ainda estaria na temporal dead
+ * zone nesse instante. Já deu `Cannot access 'indexBy' before initialization`.
  */
 function indexBy<K extends string, T>(
   items: readonly T[],
@@ -385,12 +449,10 @@ function indexBy<K extends string, T>(
   return result;
 }
 
-/**
- * Ids nomeados em vez de indexar arrays por posição.
- *
- * Com `noUncheckedIndexedAccess`, `list[2].id` tipa como `Campaign | undefined`
- * e cada uso viraria um `!` — const nomeada é mais segura e mais legível.
- */
+function addDays(d: Date, n: number): Date {
+  return new Date(d.getTime() + n * 86_400_000);
+}
+
 function buildSeedData(): Pick<WorkspaceState, 'creators' | 'brands' | 'campaigns' | 'scheduledPosts'> {
   const lais: Creator = {
     id: asCreatorId('creator-lais'),
@@ -499,6 +561,10 @@ function buildSeedData(): Pick<WorkspaceState, 'creators' | 'brands' | 'campaign
     startsAt: new Date('2026-08-20'),
     endsAt: new Date('2026-09-05'),
     createdAt: new Date('2026-08-01'),
+    history: [
+      { from: null, to: 'draft', at: addDays(new Date('2026-08-01'), 0) },
+      { from: 'draft', to: 'proposed', at: addDays(new Date('2026-08-01'), 3) },
+    ],
   };
 
   const negociando: Campaign = {
@@ -512,6 +578,11 @@ function buildSeedData(): Pick<WorkspaceState, 'creators' | 'brands' | 'campaign
     startsAt: new Date('2026-08-25'),
     endsAt: new Date('2026-09-10'),
     createdAt: new Date('2026-08-03'),
+    history: [
+      { from: null, to: 'draft', at: addDays(new Date('2026-08-03'), 0) },
+      { from: 'draft', to: 'proposed', at: addDays(new Date('2026-08-03'), 3) },
+      { from: 'proposed', to: 'negotiating', at: addDays(new Date('2026-08-03'), 6) },
+    ],
   };
 
   const producao: Campaign = {
@@ -525,6 +596,12 @@ function buildSeedData(): Pick<WorkspaceState, 'creators' | 'brands' | 'campaign
     startsAt: new Date('2026-07-28'),
     endsAt: new Date('2026-08-12'),
     createdAt: new Date('2026-07-20'),
+    history: [
+      { from: null, to: 'draft', at: addDays(new Date('2026-07-20'), 0) },
+      { from: 'draft', to: 'proposed', at: addDays(new Date('2026-07-20'), 3) },
+      { from: 'proposed', to: 'accepted', at: addDays(new Date('2026-07-20'), 6) },
+      { from: 'accepted', to: 'in_production', at: addDays(new Date('2026-07-20'), 9) },
+    ],
   };
 
   const entregue: Campaign = {
@@ -538,6 +615,13 @@ function buildSeedData(): Pick<WorkspaceState, 'creators' | 'brands' | 'campaign
     startsAt: new Date('2026-07-01'),
     endsAt: new Date('2026-07-15'),
     createdAt: new Date('2026-06-20'),
+    history: [
+      { from: null, to: 'draft', at: addDays(new Date('2026-06-20'), 0) },
+      { from: 'draft', to: 'proposed', at: addDays(new Date('2026-06-20'), 3) },
+      { from: 'proposed', to: 'accepted', at: addDays(new Date('2026-06-20'), 6) },
+      { from: 'accepted', to: 'in_production', at: addDays(new Date('2026-06-20'), 9) },
+      { from: 'in_production', to: 'delivered', at: addDays(new Date('2026-06-20'), 12) },
+    ],
   };
 
   const paga: Campaign = {
@@ -551,6 +635,14 @@ function buildSeedData(): Pick<WorkspaceState, 'creators' | 'brands' | 'campaign
     startsAt: new Date('2026-05-10'),
     endsAt: new Date('2026-05-30'),
     createdAt: new Date('2026-04-28'),
+    history: [
+      { from: null, to: 'draft', at: addDays(new Date('2026-04-28'), 0) },
+      { from: 'draft', to: 'proposed', at: addDays(new Date('2026-04-28'), 3) },
+      { from: 'proposed', to: 'accepted', at: addDays(new Date('2026-04-28'), 6) },
+      { from: 'accepted', to: 'in_production', at: addDays(new Date('2026-04-28'), 9) },
+      { from: 'in_production', to: 'delivered', at: addDays(new Date('2026-04-28'), 12) },
+      { from: 'delivered', to: 'paid', at: addDays(new Date('2026-04-28'), 15) },
+    ],
   };
 
   const recusada: Campaign = {
@@ -564,6 +656,11 @@ function buildSeedData(): Pick<WorkspaceState, 'creators' | 'brands' | 'campaign
     startsAt: new Date('2026-06-01'),
     endsAt: new Date('2026-06-15'),
     createdAt: new Date('2026-05-25'),
+    history: [
+      { from: null, to: 'draft', at: addDays(new Date('2026-05-25'), 0) },
+      { from: 'draft', to: 'proposed', at: addDays(new Date('2026-05-25'), 3) },
+      { from: 'proposed', to: 'declined', at: addDays(new Date('2026-05-25'), 6) },
+    ],
   };
 
   const postReelVitamina: ScheduledPost = {
