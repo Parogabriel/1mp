@@ -95,6 +95,21 @@
   --color-line: var(--line);
   --font-display: var(--font-fraunces);
   --font-sans: var(--font-jakarta);
+
+  /*
+   * Raio e sombra como utilitários (rounded-card, shadow-lift, shadow-lift-sm).
+   *
+   * Sem isto cada componente carrega um `style={{ borderRadius: 'var(--radius)' }}`
+   * inline — a razão de a receita de card estar copiada 15 vezes e a de botão 20.
+   *
+   * Os nomes aqui são propositalmente diferentes das variáveis cruas: o namespace
+   * de sombra do Tailwind é `--shadow-*`, que colidiria com o `--shadow-hard` do
+   * :root e criaria referência circular. Pílula usa o `rounded-full` nativo.
+   */
+  --radius-card: var(--radius);
+  --shadow-lift: var(--shadow-hard);
+  --shadow-lift-sm: var(--shadow-hard-sm);
+  --shadow-glow-accent: var(--shadow-glow);
 }
 
 html {
