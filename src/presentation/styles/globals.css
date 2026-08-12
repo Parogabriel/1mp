@@ -233,27 +233,7 @@ h3,
   animation: shape-float 7s ease-in-out infinite;
 }
 
-/* ── Rolodex de scroll ────────────────────────────────────────────────────
- * O painel tem altura fixa e corta o excesso; o track desliza por dentro, uma
- * linha por palavra. Cada linha mede exatamente a altura do painel, então
- * deslocar o track em -1 painel troca exatamente uma palavra.
- */
-.rolodex-panel {
-  height: var(--rolodex-panel-h);
-  overflow: hidden;
-  /* Esfuma topo e base pra palavra entrar e sair sem borda dura. A faixa é
-     curta de propósito: acento de maiúscula (Ê, Ç) fica perto do limite da
-     caixa e some se o esfumado avançar demais. */
-  mask-image: linear-gradient(to bottom, transparent, #000 11%, #000 89%, transparent);
-}
-
-.rolodex-row {
-  height: var(--rolodex-panel-h);
-  display: flex;
-  align-items: center;
-}
-
-/* Palavra mascarada pro reveal de scroll — ver useGsapWordReveal. */
+/* Palavra mascarada pro reveal de scroll — ver RevealText.tsx. */
 .word-reveal-mask {
   display: inline-block;
   overflow: hidden;
