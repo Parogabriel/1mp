@@ -37,10 +37,7 @@ export interface Creator {
   readonly completedCampaigns: number;
   readonly joinedAt: Date;
   readonly location: CreatorLocation;
-  /**
-   * Verificação de identidade + posse das contas. Só quem passou pelo processo
-   * recebe `true` — o selo é promessa contratual, não enfeite de card.
-   */
+  /** Identidade e posse das contas conferidas. Promessa contratual, não enfeite. */
   readonly verified: boolean;
   /** `null` enquanto o criador não subiu foto; a UI cai no monograma. */
   readonly avatarUrl: string | null;
@@ -59,17 +56,14 @@ export const totalFollowers = (creator: Creator): number =>
 
 export const tierOf = (creator: Creator): CreatorTier => {
   const total = totalFollowers(creator);
-  const match = TIER_THRESHOLDS.find(([, floor]) => total >= floor);
-  // O array cobre de 0 ao infinito, então sempre há match — mas o fallback é
-  // explícito porque `find` retorna undefined no tipo e não vamos usar `!`.
-  return match ? match[0] : 'nano';
+  // Sempre há match (o array cobre de 0 ao infinito); o fallback existe para
+  // não precisar de `!` sobre o `undefined` que `find` carrega no tipo.
+  return TIER_THRESHOLDS.find(([, floor]) => total >= floor)?.[0] ?? 'nano';
 };
 
 /**
- * Engajamento ponderado por audiência.
- *
- * Média simples entre plataformas mente: um perfil de 5k com 12% de engajamento
- * não compensa um de 800k com 1,2%. Ponderamos por seguidores.
+ * Ponderado por seguidores, não média simples: um perfil de 5k com 12% de
+ * engajamento não compensa um de 800k com 1,2%.
  */
 export const weightedEngagementRate = (creator: Creator): Rate => {
   const total = totalFollowers(creator);

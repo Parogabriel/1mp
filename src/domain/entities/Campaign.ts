@@ -38,6 +38,18 @@ export interface CampaignBrief {
   readonly mustAvoid: readonly string[];
 }
 
+/**
+ * Um degrau do histórico: quando a campanha entrou neste status.
+ *
+ * `from` é `null` só no primeiro registro, o nascimento em `draft` — não houve
+ * estado anterior de onde vir.
+ */
+export interface CampaignEvent {
+  readonly from: CampaignStatus | null;
+  readonly to: CampaignStatus;
+  readonly at: Date;
+}
+
 export interface Campaign {
   readonly id: CampaignId;
   readonly brandId: BrandId;
@@ -49,6 +61,14 @@ export interface Campaign {
   readonly startsAt: Date;
   readonly endsAt: Date;
   readonly createdAt: Date;
+  /**
+   * Trilha de mudanças de status, da mais antiga para a mais recente.
+   *
+   * Sem isto não havia como saber *quando* uma campanha mudou de estado —
+   * só o estado atual era guardado. Destrava linha do tempo, tempo médio por
+   * etapa e auditoria de quem esperou o quê.
+   */
+  readonly history: readonly CampaignEvent[];
 }
 
 /**
@@ -82,11 +102,44 @@ export class InvalidTransitionError extends Error {
   }
 }
 
-export const transitionTo = (campaign: Campaign, to: CampaignStatus): Campaign => {
+export const transitionTo = (
+  campaign: Campaign,
+  to: CampaignStatus,
+  at: Date = new Date(),
+): Campaign => {
   if (!canTransition(campaign.status, to)) {
     throw new InvalidTransitionError(campaign.status, to);
   }
-  return { ...campaign, status: to };
+  // O registro nasce junto da transição, não num passo separado: assim é
+  // impossível mudar de estado e esquecer de anotar.
+  return {
+    ...campaign,
+    status: to,
+    history: [...campaign.history, { from: campaign.status, to, at }],
+  };
+};
+
+/**
+ * Quanto tempo a campanha passou em cada status por onde já andou.
+ *
+ * O status atual conta até agora; os anteriores contam até a transição que os
+ * encerrou. Status visitado mais de uma vez soma os períodos.
+ */
+export const timeInStatus = (
+  campaign: Campaign,
+  now: Date = new Date(),
+): Readonly<Partial<Record<CampaignStatus, number>>> => {
+  const totals: Partial<Record<CampaignStatus, number>> = {};
+
+  for (let i = 0; i < campaign.history.length; i += 1) {
+    const event = campaign.history[i];
+    if (!event) continue;
+    const next = campaign.history[i + 1];
+    const until = next ? next.at.getTime() : now.getTime();
+    totals[event.to] = (totals[event.to] ?? 0) + Math.max(0, until - event.at.getTime());
+  }
+
+  return totals;
 };
 
 const COLUMN_BY_STATUS: Readonly<Record<CampaignStatus, KanbanColumn>> = {
@@ -101,8 +154,12 @@ const COLUMN_BY_STATUS: Readonly<Record<CampaignStatus, KanbanColumn>> = {
   cancelled: 'completed',
 };
 
+/** Coluna a partir do status isolado — útil antes de existir uma campanha. */
+export const kanbanColumnOfStatus = (status: CampaignStatus): KanbanColumn =>
+  COLUMN_BY_STATUS[status];
+
 export const kanbanColumnOf = (campaign: Campaign): KanbanColumn =>
-  COLUMN_BY_STATUS[campaign.status];
+  kanbanColumnOfStatus(campaign.status);
 
 export const isTerminal = (status: CampaignStatus): boolean =>
   ALLOWED_TRANSITIONS[status].length === 0;
