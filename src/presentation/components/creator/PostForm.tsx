@@ -17,6 +17,8 @@ import {
 } from '@/domain';
 import { useWorkspaceStore } from '@/application/stores/useWorkspaceStore';
 import { FORMAT_LABEL, PLATFORM_LABEL } from '@/presentation/labels';
+import { Button } from '@/presentation/components/ui/Button';
+import { useToast } from '@/presentation/components/ui/Toast';
 import { issueMessage } from './postIssueMessages';
 
 const tomorrowAt9am = (): string => {
@@ -35,6 +37,7 @@ interface PostFormProps {
 
 export function PostForm({ creatorId, campaigns }: PostFormProps) {
   const createScheduledPost = useWorkspaceStore((s) => s.createScheduledPost);
+  const toast = useToast();
 
   const [campaignId, setCampaignId] = useState<CampaignId | ''>('');
   const [platform, setPlatform] = useState<Platform>('instagram');
@@ -42,7 +45,6 @@ export function PostForm({ creatorId, campaigns }: PostFormProps) {
   const [caption, setCaption] = useState('');
   const [hashtagsInput, setHashtagsInput] = useState('');
   const [scheduledForInput, setScheduledForInput] = useState(tomorrowAt9am);
-  const [justCreated, setJustCreated] = useState(false);
 
   const formId = useId();
   const allowedFormats = FORMATS_BY_PLATFORM[platform];
@@ -93,7 +95,7 @@ export function PostForm({ creatorId, campaigns }: PostFormProps) {
 
     setCaption('');
     setHashtagsInput('');
-    setJustCreated(true);
+    toast.show('Post adicionado ao planejamento.', 'success');
   };
 
   if (campaigns.length === 0) {
@@ -117,7 +119,6 @@ export function PostForm({ creatorId, campaigns }: PostFormProps) {
             value={campaignId}
             onChange={(e) => {
               setCampaignId(asCampaignId(e.target.value));
-              setJustCreated(false);
             }}
             required
             className="w-full border-(length:--border-width) border-line bg-surface px-2 py-1.5 text-xs"
@@ -189,7 +190,7 @@ export function PostForm({ creatorId, campaigns }: PostFormProps) {
             style={{ borderRadius: 'var(--radius)' }}
           />
         </Field>
-        <p className="mt-1 text-right text-[10px] text-ink-muted">
+        <p className="mt-1 text-right text-[11px] text-ink-muted">
           {caption.trim().length} / {captionLimit}
         </p>
       </div>
@@ -218,23 +219,21 @@ export function PostForm({ creatorId, campaigns }: PostFormProps) {
         </ul>
       )}
 
-      <button
+      {/* Bloqueia com problema de validação em aberto.
+          Antes só `!campaignId` travava, então dava para agendar post sem
+          legenda ou com data no passado — o domínio reprovava e a UI aceitava. */}
+      <Button
         type="submit"
-        disabled={!campaignId}
-        className="mt-4 border-(length:--border-width) border-line px-4 py-2 text-xs font-bold tracking-widest uppercase disabled:opacity-40"
-        style={{
-          background: 'var(--accent)',
-          color: 'var(--accent-ink)',
-          borderRadius: 'var(--radius-pill)',
-          boxShadow: 'var(--shadow-glow)',
-        }}
+        variant="primary"
+        disabled={!campaignId || issues.length > 0}
+        className="mt-4"
       >
         Adicionar ao planejamento
-      </button>
+      </Button>
 
-      {justCreated && (
-        <p role="status" className="mt-2 text-[11px]" style={{ color: 'var(--accent)' }}>
-          Post adicionado ao planejamento.
+      {issues.length > 0 && campaignId && (
+        <p className="mt-2 text-[11px] text-ink-muted">
+          Resolva os pontos acima para agendar.
         </p>
       )}
     </form>
@@ -252,7 +251,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1 block text-[10px] font-bold tracking-widest text-ink-muted uppercase">
+      <label htmlFor={htmlFor} className="mb-1 block text-[11px] font-bold tracking-widest text-ink-muted uppercase">
         {label}
       </label>
       {children}

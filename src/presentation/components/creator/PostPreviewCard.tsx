@@ -21,9 +21,10 @@ const scheduleFormatter = new Intl.DateTimeFormat('pt-BR', {
 interface PostPreviewCardProps {
   readonly post: ScheduledPost;
   readonly campaignTitle: string;
+  readonly onEdit?: () => void;
 }
 
-export function PostPreviewCard({ post, campaignTitle }: PostPreviewCardProps) {
+export function PostPreviewCard({ post, campaignTitle, onEdit }: PostPreviewCardProps) {
   const issues = validatePost(post);
   const vertical = VERTICAL_FORMATS.has(post.format);
 
@@ -38,13 +39,25 @@ export function PostPreviewCard({ post, campaignTitle }: PostPreviewCardProps) {
           style={{ borderRadius: 'var(--radius)', background: 'var(--surface)' }}
           aria-hidden="true"
         >
-          <span className="text-[9px] font-bold tracking-widest text-ink-muted uppercase">
+          <span className="text-[11px] font-bold tracking-widest text-ink-muted uppercase">
             {FORMAT_LABEL[post.format]}
           </span>
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-bold tracking-tight">{campaignTitle}</p>
+          {/* O título abre o editor. Botão, não card clicável: teclado e leitor
+              de tela precisam do mesmo caminho que o mouse. */}
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="block max-w-full truncate text-left text-xs font-bold tracking-tight transition-opacity duration-200 hover:opacity-70"
+            >
+              {campaignTitle}
+            </button>
+          ) : (
+            <p className="truncate text-xs font-bold tracking-tight">{campaignTitle}</p>
+          )}
           <p className="mt-0.5 text-[11px] text-ink-muted">
             {PLATFORM_LABEL[post.platform]} · {scheduleFormatter.format(post.scheduledFor)}
           </p>

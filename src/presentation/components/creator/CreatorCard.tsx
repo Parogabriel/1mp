@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   formatBRL,
   tierOf,
@@ -12,6 +12,7 @@ import {
 } from '@/domain';
 import { Badge, type BadgeTone } from '@/presentation/components/ui/Badge';
 import { useGsapButtonPress } from '@/presentation/hooks/useGsapButtonPress';
+import { CreatorProfileModal } from './CreatorProfileModal';
 
 const compact = new Intl.NumberFormat('pt-BR', { notation: 'compact' });
 
@@ -48,6 +49,7 @@ interface CreatorCardProps {
 
 export function CreatorCard({ creator, action }: CreatorCardProps) {
   const ctaRef = useRef<HTMLButtonElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   useGsapButtonPress(ctaRef);
 
   const tier = tierOf(creator);
@@ -80,7 +82,7 @@ export function CreatorCard({ creator, action }: CreatorCardProps) {
             </h3>
             {creator.verified && <VerifiedSeal />}
           </div>
-          <p className="mt-0.5 truncate font-mono text-xs text-ink-muted">{primaryHandle}</p>
+          <p className="mt-0.5 truncate tabular-nums text-xs text-ink-muted">{primaryHandle}</p>
 
           <p className="mt-2 flex items-center gap-1 text-[11px] text-ink-muted">
             <MapPinIcon />
@@ -120,6 +122,7 @@ export function CreatorCard({ creator, action }: CreatorCardProps) {
         <button
           ref={ctaRef}
           type="button"
+          onClick={() => setProfileOpen(true)}
           className="flex-1 border-(length:--border-width) border-line px-4 py-2.5 text-[11px] font-bold tracking-widest uppercase transition-colors duration-200 hover:bg-ink hover:text-surface"
           style={{ borderRadius: 'var(--radius-pill)' }}
         >
@@ -137,6 +140,11 @@ export function CreatorCard({ creator, action }: CreatorCardProps) {
           </button>
         )}
       </footer>
+
+      <CreatorProfileModal
+        creator={profileOpen ? creator : null}
+        onClose={() => setProfileOpen(false)}
+      />
     </article>
   );
 }
@@ -182,7 +190,7 @@ function VerifiedSeal() {
   return (
     <span
       title="Criador verificado"
-      className="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold tracking-widest uppercase"
+      className="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-bold tracking-widest uppercase"
       style={{
         background: 'var(--accent)',
         color: 'var(--accent-ink)',
@@ -206,10 +214,10 @@ function Metric({
 }) {
   return (
     <div className="bg-surface-raised px-2.5 py-2.5 text-center">
-      <dt className="text-[9px] leading-tight tracking-widest text-ink-muted uppercase">
+      <dt className="text-[11px] leading-tight tracking-widest text-ink-muted uppercase">
         {label}
       </dt>
-      <dd className="mt-1 font-mono text-sm font-bold" style={tone ? { color: tone } : undefined}>
+      <dd className="mt-1 tabular-nums text-sm font-medium" style={tone ? { color: tone } : undefined}>
         {value}
       </dd>
     </div>
