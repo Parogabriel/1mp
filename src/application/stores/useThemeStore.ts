@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useAccentStore } from './useAccentStore';
 
 export type ThemeName = 'brutalist' | 'midnight';
 
@@ -19,6 +20,10 @@ interface ThemeState {
 const applyTheme = (theme: ThemeName): void => {
   if (typeof document === 'undefined') return;
   document.documentElement.dataset.theme = theme;
+
+  // O destaque escolhido tem um par de cores por tema; sem reaplicar aqui, o
+  // override inline continuaria com a cor do tema anterior.
+  useAccentStore.getState().reapply();
 };
 
 export const useThemeStore = create<ThemeState>()(

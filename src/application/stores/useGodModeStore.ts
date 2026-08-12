@@ -3,15 +3,11 @@ import { persist } from 'zustand/middleware';
 import { type Rate, fromPercent } from '@/domain';
 
 /**
- * ⚠️ LEIA ANTES DE LEVAR ISTO A PRODUÇÃO
+ * ⚠️ NÃO É SEGREDO. O passcode vai no bundle do client e é legível no DevTools.
  *
- * O passcode abaixo está no bundle do client — ele é visível para qualquer pessoa
- * que abrir o DevTools. Isto é aceitável APENAS como gate de demonstração local,
- * que é o escopo declarado desta tela ("popular o banco local").
- *
- * No momento em que o God Mode puder alterar dados reais, este passcode precisa sair
- * do client e virar autenticação de servidor com role de administrador. Um segredo
- * enviado ao navegador deixa de ser segredo — não existe meia-medida aqui.
+ * Aceitável só porque o escopo desta tela é popular dados locais de
+ * demonstração. No dia em que o God Mode tocar dado real, ele vira autenticação
+ * de servidor com role de administrador — não há meia-medida.
  */
 const DEMO_PASSCODE = '1MP-GOD-2026' as const;
 
@@ -82,13 +78,8 @@ export const useGodModeStore = create<GodModeState>()(
         lastSeedAt,
       }),
 
-      /**
-       * Revive `lastSeedAt` como Date.
-       *
-       * JSON.stringify serializa Date como string ISO e o parse devolve string —
-       * o tipo continua dizendo `Date`, mas em runtime não é. Sem esta conversão,
-       * qualquer `Intl.format(lastSeedAt)` estoura RangeError depois de um reload.
-       */
+      // O parse devolve string onde o tipo promete `Date`. Sem reviver,
+      // `Intl.format(lastSeedAt)` estoura RangeError depois de um reload.
       merge: (persisted, current) => {
         const stored = persisted as Partial<Record<keyof GodModeState, unknown>> | undefined;
         const rawSeedAt = stored?.lastSeedAt;
