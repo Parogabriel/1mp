@@ -66,6 +66,26 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
     let assinado: NonNullable<LenisRef['lenis']> | null = null;
     const onScroll = () => ScrollTrigger.update();
 
+    /*
+     * Com `root: true` o Lenis mede a altura rolável contra `window`, e a única
+     * fonte automática de remedição embutida nele é o evento `resize` da janela —
+     * que dispara quando o VIEWPORT muda de tamanho, nunca quando o CONTEÚDO
+     * cresce. Boa parte desta página só atinge a altura final depois do mount (o
+     * `LiveTicker` popula linhas num efeito, por exemplo), então o Lenis media
+     * 720px de página rolável — a altura da viewport no instante em que mediu —
+     * e travava o scroll pra sempre com `limit.y = 0`. Um `WheelEvent` real não
+     * fazia nada, e a única pista era a classe `lenis-scrolling` presa no `html`,
+     * porque o Lenis registrava o gesto mas não tinha para onde rolar.
+     *
+     * Um `ResizeObserver` próprio em `documentElement` parecia a correção óbvia,
+     * mas medido no navegador ele nunca disparou nem uma vez em três segundos —
+     * nem a chamada inicial que a spec garante. Sem confiar nisso em todo
+     * navegador, a correção que não depende de nenhum callback de observador é
+     * chamar `resize()` a cada frame do próprio laço que já roda:
+     * a leitura é barata (scrollHeight, clientHeight), o laço já existe e roda
+     * enquanto a página é rolável, e a altura correta nunca fica mais de um frame
+     * desatualizada, não importa a fonte do crescimento.
+     */
     const update = (time: number) => {
       const lenis = lenisRef.current?.lenis;
       if (!lenis) return;
@@ -76,6 +96,7 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
         assinado = lenis;
       }
 
+      lenis.resize();
       lenis.raf(time * 1000);
     };
 
