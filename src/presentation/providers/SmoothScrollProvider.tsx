@@ -49,21 +49,42 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
   useEffect(() => {
     if (!enabled) return;
 
-    // A instância é capturada aqui, não lida no cleanup: `lenisRef.current` pode
-    // já apontar para outra coisa quando o cleanup roda, e aí o `off` removeria
-    // o listener errado. Refs são atribuídas no commit, então já está pronta.
-    const lenis = lenisRef.current?.lenis;
+    /*
+     * A instância é lida a cada frame, nunca capturada na entrada do efeito.
+     *
+     * `autoRaf` está desligado, então o Lenis só avança pelo `raf` que chamamos
+     * aqui. E a ref do ReactLenis pode ainda estar vazia quando este efeito roda
+     * — o componente monta no mesmo commit. Capturar `lenisRef.current` uma vez
+     * deixava `lenis` como `undefined` para sempre: o Lenis engolia o wheel, a
+     * página nunca rolava, e a única pista era a classe `lenis-scrolling` presa
+     * no `html`. Já quebrou assim.
+     *
+     * `assinado` guarda de quem o listener de scroll foi pendurado, para o
+     * cleanup remover do mesmo objeto em que assinou — que é o motivo real de não
+     * se ler ref dentro de cleanup.
+     */
+    let assinado: NonNullable<LenisRef['lenis']> | null = null;
+    const onScroll = () => ScrollTrigger.update();
 
-    const update = (time: number) => lenis?.raf(time * 1000);
+    const update = (time: number) => {
+      const lenis = lenisRef.current?.lenis;
+      if (!lenis) return;
+
+      if (assinado !== lenis) {
+        assinado?.off('scroll', onScroll);
+        lenis.on('scroll', onScroll);
+        assinado = lenis;
+      }
+
+      lenis.raf(time * 1000);
+    };
+
     gsap.ticker.add(update);
     gsap.ticker.lagSmoothing(0);
 
-    const onScroll = () => ScrollTrigger.update();
-    lenis?.on('scroll', onScroll);
-
     return () => {
       gsap.ticker.remove(update);
-      lenis?.off('scroll', onScroll);
+      assinado?.off('scroll', onScroll);
     };
   }, [enabled]);
 
