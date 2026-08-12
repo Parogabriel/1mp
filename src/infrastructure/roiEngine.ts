@@ -179,9 +179,3 @@ export const computeRoi = (
     engineVersion: ENGINE_VERSION,
   };
 };
-
-/** Investimento que zera o resultado — abaixo disso a campanha dá lucro. */
-export const breakEvenInvestment = (
-  input: ReachInput,
-  assumptions: RoiAssumptions,
-): Cents => computeRoi(input, assumptions).contributionCents;
