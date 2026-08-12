@@ -206,7 +206,7 @@ export function HandsNetworkCanvas({
         ctx.clearRect(0, 0, width, height);
 
         // Cobre a área inteira preservando a proporção da imagem (object-cover).
-        const scale = Math.max(width / ratio, height) ;
+        const scale = Math.max(width / ratio, height);
         const drawH = scale;
         const drawW = scale * ratio;
         const offsetX = (width - drawW) / 2;

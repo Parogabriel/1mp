@@ -12,16 +12,13 @@ interface SmoothScrollProviderProps {
 }
 
 /**
- * Lenis global, sincronizado no ticker do GSAP em vez do próprio rAF dele.
+ * Lenis global, sincronizado no ticker do GSAP em vez do rAF próprio dele.
  *
- * Sem isso, Lenis e ScrollTrigger correm em dois relógios diferentes e o scrub
- * de scroll (hero, reveal de texto) fica um frame atrás do que o usuário vê —
- * pequeno o suficiente pra não parecer "bug", grande o suficiente pra parecer
- * "travado". Rodar os dois no mesmo ticker elimina o descompasso.
+ * Em dois relógios diferentes, o scrub de scroll fica um frame atrás do que o
+ * usuário vê — pouco para parecer bug, o bastante para parecer travado.
  *
- * Com movimento reduzido, não monta o Lenis: a página rola nativamente, sem
- * inércia — suavizar o scroll é uma escolha estética, não algo que alguém que
- * pediu menos movimento devia receber de qualquer jeito.
+ * Com movimento reduzido o Lenis não monta: suavizar scroll é escolha estética,
+ * e quem pediu menos movimento não devia recebê-la assim mesmo.
  */
 export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
   const lenisRef = useRef<LenisRef>(null);
@@ -34,18 +31,21 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
   useEffect(() => {
     if (!enabled) return;
 
-    const update = (time: number) => {
-      lenisRef.current?.lenis?.raf(time * 1000);
-    };
+    // A instância é capturada aqui, não lida no cleanup: `lenisRef.current` pode
+    // já apontar para outra coisa quando o cleanup roda, e aí o `off` removeria
+    // o listener errado. Refs são atribuídas no commit, então já está pronta.
+    const lenis = lenisRef.current?.lenis;
+
+    const update = (time: number) => lenis?.raf(time * 1000);
     gsap.ticker.add(update);
     gsap.ticker.lagSmoothing(0);
 
     const onScroll = () => ScrollTrigger.update();
-    lenisRef.current?.lenis?.on('scroll', onScroll);
+    lenis?.on('scroll', onScroll);
 
     return () => {
       gsap.ticker.remove(update);
-      lenisRef.current?.lenis?.off('scroll', onScroll);
+      lenis?.off('scroll', onScroll);
     };
   }, [enabled]);
 
