@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import {
   FORMATS_BY_PLATFORM,
   PLATFORMS,
@@ -20,6 +21,7 @@ import {
   useWorkspaceStore,
 } from '@/application/stores/useWorkspaceStore';
 import { FORMAT_LABEL, PLATFORM_LABEL } from '@/presentation/labels';
+import { useToast } from '@/presentation/components/ui/Toast';
 
 const STEP_TITLES = ['Objetivo', 'Formato', 'Diretrizes', 'Orçamento', 'Revisão'] as const;
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -44,14 +46,18 @@ const splitList = (input: string): readonly string[] =>
 
 interface BriefWizardProps {
   readonly brand: Brand;
+  /** Chamado depois de criar — permite ao lançador fechar o modal. */
+  readonly onCreated?: () => void;
+  /** Dentro de um modal a moldura já existe; sem ela o wizard desenha a própria. */
+  readonly bare?: boolean;
 }
 
-export function BriefWizard({ brand }: BriefWizardProps) {
+export function BriefWizard({ brand, onCreated, bare = false }: BriefWizardProps) {
   const createCampaign = useWorkspaceStore((s) => s.createCampaign);
   const creators = useWorkspaceStore((s) => s.creators);
+  const toast = useToast();
 
   const [step, setStep] = useState<Step>(1);
-  const [confirmation, setConfirmation] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [objective, setObjective] = useState('');
@@ -125,8 +131,8 @@ export function BriefWizard({ brand }: BriefWizardProps) {
       startsAt,
       endsAt,
     });
-
-    setConfirmation(`Campanha "${title}" criada como rascunho.`);
+    toast.show(`Campanha "${title}" criada como rascunho.`, 'success');
+    onCreated?.();
     setStep(1);
     setTitle('');
     setObjective('');
@@ -146,27 +152,68 @@ export function BriefWizard({ brand }: BriefWizardProps) {
 
   return (
     <div
-      className="border-(length:--border-width) border-line bg-surface-raised p-5"
-      style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-hard)' }}
+      className={
+        bare
+          ? ''
+          : 'rounded-card border-(length:--border-width) border-line bg-surface-raised p-5 shadow-lift'
+      }
     >
-      <ol className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Etapas do briefing">
+      {/* Progresso contínuo + etapas já visitadas clicáveis: dá para voltar e
+          conferir sem perder o que foi preenchido. */}
+      <div
+        className="h-1 w-full overflow-hidden rounded-full"
+        role="progressbar"
+        aria-valuenow={step}
+        aria-valuemin={1}
+        aria-valuemax={5}
+        aria-label={`Etapa ${step} de 5`}
+        style={{ background: 'color-mix(in srgb, var(--ink) 10%, transparent)' }}
+      >
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: 'var(--accent)' }}
+          animate={{ width: `${(step / 5) * 100}%` }}
+          transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+        />
+      </div>
+
+      <ol className="mt-3 flex flex-wrap gap-x-3 gap-y-1" aria-label="Etapas do briefing">
         {STEP_TITLES.map((label, i) => {
           const stepNumber = (i + 1) as Step;
           const active = stepNumber === step;
+          const visited = stepNumber < step;
           return (
-            <li
-              key={label}
-              aria-current={active ? 'step' : undefined}
-              className="text-[11px] font-bold tracking-widest uppercase"
-              style={{ color: active ? 'var(--accent)' : 'var(--ink-muted)' }}
-            >
-              {i + 1}. {label}
+            <li key={label} aria-current={active ? 'step' : undefined}>
+              <button
+                type="button"
+                onClick={() => visited && setStep(stepNumber)}
+                disabled={!visited && !active}
+                className="text-[11px] font-medium tracking-widest uppercase transition-colors duration-200 disabled:cursor-default"
+                style={{
+                  color: active
+                    ? 'var(--accent)'
+                    : visited
+                      ? 'var(--ink)'
+                      : 'var(--ink-muted)',
+                }}
+              >
+                {visited && <span aria-hidden="true">✓ </span>}
+                {i + 1}. {label}
+              </button>
             </li>
           );
         })}
       </ol>
 
-      <div className="mt-5">
+      {/* `key={step}` faz o framer remontar o bloco a cada etapa, então a
+          entrada anima em vez de o conteúdo trocar seco. */}
+      <motion.div
+        key={step}
+        initial={{ opacity: 0, x: 14 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        className="mt-5"
+      >
         {step === 1 && (
           <div className="space-y-3">
             <Field label="Título da campanha" htmlFor={`${formId}-title`}>
@@ -205,7 +252,7 @@ export function BriefWizard({ brand }: BriefWizardProps) {
         {step === 2 && (
           <div className="space-y-4">
             <fieldset>
-              <legend className="mb-2 text-[10px] font-bold tracking-widest text-ink-muted uppercase">
+              <legend className="mb-2 text-[11px] font-bold tracking-widest text-ink-muted uppercase">
                 Plataformas
               </legend>
               <div className="flex flex-wrap gap-2">
@@ -221,7 +268,7 @@ export function BriefWizard({ brand }: BriefWizardProps) {
             </fieldset>
 
             <fieldset>
-              <legend className="mb-2 text-[10px] font-bold tracking-widest text-ink-muted uppercase">
+              <legend className="mb-2 text-[11px] font-bold tracking-widest text-ink-muted uppercase">
                 Formatos
               </legend>
               {availableFormats.length === 0 ? (
@@ -361,7 +408,7 @@ export function BriefWizard({ brand }: BriefWizardProps) {
             </p>
           </div>
         )}
-      </div>
+      </motion.div>
 
       <div className="mt-5 flex items-center justify-between border-t-(length:--border-width) border-line pt-4">
         <button
@@ -397,11 +444,6 @@ export function BriefWizard({ brand }: BriefWizardProps) {
         )}
       </div>
 
-      {confirmation && (
-        <p role="status" className="mt-3 text-[11px]" style={{ color: 'var(--accent)' }}>
-          {confirmation}
-        </p>
-      )}
     </div>
   );
 }
@@ -441,7 +483,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1 block text-[10px] font-bold tracking-widest text-ink-muted uppercase">
+      <label htmlFor={htmlFor} className="mb-1 block text-[11px] font-bold tracking-widest text-ink-muted uppercase">
         {label}
       </label>
       {children}
