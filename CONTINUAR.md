@@ -54,7 +54,9 @@ legível.
 **Quatro ilustrações SVG** em `home/illustrations/` (`SharedNumber`,
 `Projection`, `Escrow`, `Trail`), com `strokes.ts` guardando os atributos
 comuns. Usam `currentColor` para o traço, então funcionam nos dois temas sem
-uma segunda versão.
+uma segunda versão. Revisadas visualmente (renderizadas grandes, nos dois
+temas) — traço, raio e cor consistentes entre elas, cada uma legível pela
+metáfora da seção que ilustra. Sem alteração necessária.
 
 **Conteúdo de venda** — `home/BrandStrip.tsx` (marcas fictícias, como
 assinatura tipográfica e rotuladas), `home/ProofCases.tsx` (campanhas reais da
@@ -80,8 +82,6 @@ primeira dobra. Sobraram marca, "Sobre", configurações e "Entrar". Os ids das
 seções continuam de pé.
 
 **Pendências da home:**
-- As ilustrações não passaram por revisão visual detalhada — vale conferir a
-  olho antes de considerar essa parte fechada.
 - `Hero`, `WhyUs`, `Pricing`, `AboutUs` e `Faq` ainda repetem o mesmo cabeçalho
   (sobrelinha + título serifado).
 - `CreatorShowcase` (carrossel) e `BrandStrip` disputam a mesma função de
