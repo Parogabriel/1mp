@@ -1,0 +1,86 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Permite republicar sem precisar de um commit novo.
+  workflow_dispatch:
+
+# `pages` e `id-token` são o mínimo que o par configure/deploy-pages exige: o
+# segundo é para a autenticação OIDC do deploy, que dispensa guardar token.
+# `contents` continua só leitura — nada aqui escreve no repositório.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Sem `cancel-in-progress`: interromper um deploy pela metade deixaria o site
+# publicado num estado misto. Pushes em sequência entram na fila.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construir:
+    name: Construir site estático
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Liga o modo de exportação: `output: export`, `basePath` e a URL
+      # absoluta do site. Ver next.config.ts e src/config.ts.
+      NEXT_PUBLIC_GITHUB_PAGES: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # `enablement` liga o Pages na primeira execução, então não há passo
+      # manual em Settings antes do primeiro deploy.
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build estático
+        run: npm run build
+
+      # Guarda barata contra o processamento por Jekyll, que descarta
+      # diretórios iniciados por underscore — e `_next/` é onde estão todos os
+      # scripts e estilos. O deploy por artefato não deveria passar por lá,
+      # mas o arquivo custa um byte e o modo de falha seria o site inteiro sem
+      # CSS nem JS.
+      - name: Marcar conteúdo como não-Jekyll
+        run: touch out/.nojekyll
+
+      - name: Enviar artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  publicar:
+    name: Publicar
+    needs: construir
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4
