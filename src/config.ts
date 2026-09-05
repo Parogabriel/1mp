@@ -11,9 +11,22 @@
  */
 
 /**
- * URL absoluta do site, usada pelo `metadataBase` para resolver Open Graph.
- *
- * Aponta para localhost porque é onde a aplicação roda hoje. Ao publicar,
- * troque aqui — é o único lugar.
+ * Ligado só pelo workflow de deploy. O GitHub Pages serve este projeto em
+ * `parogabriel.github.io/1mp` — um subcaminho, não a raiz de um domínio —, e é
+ * a única diferença real entre rodar aqui e rodar publicado.
  */
-export const APP_URL = 'http://localhost:3000';
+const paraGitHubPages = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
+
+/**
+ * Prefixo de caminho do site publicado, vazio em desenvolvimento.
+ *
+ * O `<Link>` e o `next/navigation` já aplicam o `basePath` sozinhos; quem
+ * precisa desta constante é o código que monta URL de asset na mão, fora do
+ * alcance do Next — `new Image()`, `fetch` de arquivo em `public/`.
+ */
+export const BASE_PATH = paraGitHubPages ? '/1mp' : '';
+
+/** URL absoluta do site, usada pelo `metadataBase` para resolver Open Graph. */
+export const APP_URL = paraGitHubPages
+  ? 'https://parogabriel.github.io/1mp'
+  : 'http://localhost:3000';
