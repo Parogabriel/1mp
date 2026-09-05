@@ -270,6 +270,27 @@ mesma página duplicaria o `id` e quebraria o `aria-labelledby`. Foi por isso
 que a calculadora solta saiu da home e ficou só dentro do `ProductTour`. Se for
 montar duas vezes, o `id` precisa virar `useId`.
 
+### 10. Asset carregado em runtime não recebe o `basePath` sozinho
+
+O site publicado vive em `parogabriel.github.io/1mp`, um subcaminho. O Next
+aplica esse prefixo em `<Link>`, `next/navigation` e nos imports que ele mesmo
+resolve — mas não em URL montada na mão: `new Image()`, `fetch` de arquivo em
+`public/`, `url()` escrito em CSS.
+
+O caso vivo é o `hands.webp` do `HandsNetworkCanvas`, que importa `BASE_PATH` de
+`src/config.ts`. Ao adicionar asset assim, o prefixo é manual.
+
+O que torna isso perigoso é onde a falha aparece: em `localhost` o `BASE_PATH` é
+string vazia, então tudo funciona em desenvolvimento e no CI, e o 404 só existe
+no site publicado. Para reproduzir localmente:
+
+```bash
+NEXT_PUBLIC_GITHUB_PAGES=true npm run build
+mkdir -p /tmp/pages/1mp && cp -r out/* /tmp/pages/1mp/
+cd /tmp/pages && python3 -m http.server 8099
+# abre em http://127.0.0.1:8099/1mp/
+```
+
 ---
 
 ## Convenções em vigor
