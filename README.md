@@ -65,8 +65,13 @@ God Mode (`/sys-admin/god-mode`, passcode `1MP-GOD-2026`) hoje serve para
 
 O site vai para o GitHub Pages em
 **https://parogabriel.github.io/1mp** a cada push na `main`, pelo workflow
-`.github/workflows/deploy-pages.yml`. Não há passo manual: o `configure-pages`
-liga o Pages na primeira execução.
+`.github/workflows/deploy-pages.yml`.
+
+**Antes do primeiro deploy, ligue o Pages uma vez** em Settings › Pages ›
+Source: **GitHub Actions**. Sem isso o workflow falha no passo de publicação.
+Existe um jeito de fazer isso pelo próprio workflow — o input `enablement` do
+`actions/configure-pages` —, mas ele exige um token com escopo `repo` guardado
+como segredo, e trocar um clique único por um segredo permanente não compensa.
 
 Publicar é possível porque nenhuma rota depende de servidor — sem API route,
 server action ou rota dinâmica, o build inteiro vira HTML em `out/`. O que muda

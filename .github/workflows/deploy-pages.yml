@@ -1,5 +1,13 @@
 name: Deploy GitHub Pages
 
+# Exige o Pages já ligado no repositório, uma única vez, em
+# Settings › Pages › Source: GitHub Actions.
+#
+# O `actions/configure-pages` tem um input `enablement` que faria isso daqui,
+# mas ele "requires a token other than GITHUB_TOKEN" — precisaria de um PAT com
+# escopo `repo` guardado como segredo. Trocar um clique único por um segredo
+# permanente num repositório que não tem nenhum é péssimo negócio.
+
 on:
   push:
     branches: [main]
@@ -43,13 +51,6 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-
-      # `enablement` liga o Pages na primeira execução, então não há passo
-      # manual em Settings antes do primeiro deploy.
-      - name: Configurar Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Instalar dependências
         run: npm ci
