@@ -13,9 +13,13 @@ npm run dev
 Abre em `http://localhost:3000`. Node 20+ recomendado (testado com Node 24;
 o CI roda em 22).
 
-**Não há `.env`.** A aplicação não tem segredo nem valor que mude por deploy —
-a única constante pública vive em `src/config.ts`. Clonar e rodar são dois
-comandos.
+Para abrir no celular sem publicar, `npm run dev:lan` serve na rede local — o
+endereço é `http://<ip-do-pc>:3000`, com o celular na mesma Wi-Fi.
+
+**Não há `.env`.** A aplicação não tem segredo: nada aqui precisa ficar fora do
+repositório. A única variável é `NEXT_PUBLIC_GITHUB_PAGES`, ligada pelo workflow
+de publicação e por mais ninguém — em desenvolvimento ela não existe. Clonar e
+rodar são dois comandos.
 
 ## O que está pronto
 
@@ -56,6 +60,33 @@ incluindo problemas de validação de propósito (um post no passado, outro sem
 legenda). Persiste em `localStorage` (`1mp.workspace`). O One-Click Seed do
 God Mode (`/sys-admin/god-mode`, passcode `1MP-GOD-2026`) hoje serve para
 **re-semear**, não mais como única forma de ter dados.
+
+## Publicação
+
+O site vai para o GitHub Pages em
+**https://parogabriel.github.io/1mp** a cada push na `main`, pelo workflow
+`.github/workflows/deploy-pages.yml`. Não há passo manual: o `configure-pages`
+liga o Pages na primeira execução.
+
+Publicar é possível porque nenhuma rota depende de servidor — sem API route,
+server action ou rota dinâmica, o build inteiro vira HTML em `out/`. O que muda
+no alvo de publicação está em duas constantes de `src/config.ts`, e nada além
+delas: o Pages serve em subcaminho (`/1mp`), não na raiz de um domínio.
+
+Duas consequências de servir arquivo estático, ambas aceitas:
+
+**Os cabeçalhos de segurança não existem no site publicado.** O Pages é um CDN
+de arquivos e não aceita cabeçalho customizado. `next.config.ts` remove o bloco
+`headers` quando o alvo é o Pages em vez de deixá-lo declarado dando a impressão
+de proteger algo — as proteções continuam valendo em `next dev` e `next start`.
+Se um dia isso pesar, o caminho é uma hospedagem que rode o Next de verdade.
+
+**`basePath` não alcança quem monta URL na mão.** `<Link>` e `next/navigation`
+recebem o prefixo do próprio Next; `new Image()`, `fetch` e `url()` em CSS, não.
+Hoje o único caso é o `hands.webp` do `HandsNetworkCanvas`, que importa
+`BASE_PATH` de `src/config.ts`. Ao adicionar asset carregado em runtime, o
+prefixo é manual — e a falha aparece só no site publicado, nunca em
+desenvolvimento, porque em `localhost` o prefixo é vazio.
 
 ## Decisões de arquitetura registradas
 
