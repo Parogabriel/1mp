@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { BASE_PATH } from '@/config';
 
 /** Nós amostrados da imagem. Acima disso a malha empasta e vira mancha. */
 const NODE_COUNT = 3200;
@@ -119,7 +120,10 @@ interface HandsNetworkCanvasProps {
  * melhor que um desenho errado no lugar de um certo.
  */
 export function HandsNetworkCanvas({
-  src = '/hands.webp',
+  // `new Image()` é DOM puro: o `basePath` que o Next aplica sozinho em
+  // `<Link>` e `next/image` não chega aqui, e sem o prefixo a imagem dá 404
+  // quando o site vive num subcaminho.
+  src = `${BASE_PATH}/hands.webp`,
   intensity = 1,
   className,
 }: HandsNetworkCanvasProps) {

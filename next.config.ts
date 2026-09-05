@@ -1,12 +1,14 @@
 import type { NextConfig } from 'next';
+import { BASE_PATH } from './src/config';
 
 /**
  * Cabeçalhos de segurança aplicados a todas as rotas.
  *
- * Nenhum deles depende de configuração no provedor de hospedagem: viajam com a
- * resposta, então valem igualmente em produção, em preview e no `next start`
- * local. É a diferença entre uma proteção que existe e uma que alguém precisa
- * lembrar de ligar.
+ * Valem no `next dev` e no `next start`, onde existe um servidor Next para
+ * emiti-los. A publicação no GitHub Pages é de arquivos estáticos servidos por
+ * um CDN que não aceita cabeçalho customizado, então lá eles não existem — por
+ * isso o bloco abaixo sai da configuração quando o alvo é o Pages, em vez de
+ * ficar declarado dando a impressão de proteger algo.
  */
 const cabecalhosDeSeguranca = [
   // Impede o navegador de adivinhar o tipo do conteúdo. Sem isso, um arquivo
@@ -40,14 +42,31 @@ const cabecalhosDeSeguranca = [
   },
 ];
 
+const paraGitHubPages = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true';
+
 const nextConfig: NextConfig = {
   // O padrão anuncia "X-Powered-By: Next.js" em toda resposta. Informar a
   // versão do framework não protege ninguém e ajuda quem procura alvo.
   poweredByHeader: false,
 
-  async headers() {
-    return [{ source: '/:path*', headers: cabecalhosDeSeguranca }];
-  },
+  ...(paraGitHubPages
+    ? {
+        // O Pages serve arquivo, não roda Node: o build precisa virar HTML
+        // pronto em `out/`. Só é possível porque nenhuma rota depende de
+        // servidor — não há API route, server action nem rota dinâmica.
+        output: 'export' as const,
+
+        // Sem isto o Next só publica `/sobre`; o Pages procura `/sobre/` e
+        // devolve 404 em quem chegar pelo link com barra no fim.
+        trailingSlash: true,
+
+        basePath: BASE_PATH,
+      }
+    : {
+        async headers() {
+          return [{ source: '/:path*', headers: cabecalhosDeSeguranca }];
+        },
+      }),
 };
 
 export default nextConfig;
